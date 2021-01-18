@@ -1,4 +1,4 @@
-# DifferentiableHOS
+# Differentiable Lensing Higher Order Statistics
 Project to study higher order weak lensing statistics using differentiable simulations.
 
 Project leads: [@dlanzieri](https://github.com/dlanzieri) (PhD project), [@EiffL](https://github.com/EiffL), [@modichirag](https://github.com/modichirag)
