@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Remove temporary tex files
+paper/*.aux
+paper/*.out
+paper/*.pdf
+paper/*.gz
