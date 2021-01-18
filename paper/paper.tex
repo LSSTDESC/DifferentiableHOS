@@ -1,0 +1,68 @@
+\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
+\documentclass[twocolumn,twocolappendix]{aastex63}
+
+% Add your own macros here:
+\pdfoutput=1 %for arXiv submission
+%\usepackage{amsmath,amssymb,amstext}
+\usepackage{amsmath,amstext}
+\usepackage[T1]{fontenc}
+\usepackage{apjfonts}
+\usepackage{ae,aecompl}
+\usepackage[utf8]{inputenc}
+\usepackage[figure,figure*]{hypcap}
+
+\usepackage{url}
+\urlstyle{same}
+
+\usepackage{lineno}
+\linenumbers
+%\modulolinenumbers[2]
+
+\newcommand{\placeholder}[1]{\textit{PLACEHOLDER: #1}}
+
+
+% header settings
+\shorttitle{Tomographic binning optimization}
+\shortauthors{Author A et al.\ (LSST~DESC)}
+
+% ======================================================================
+
+\begin{document}
+\title{Forecasting the power of Higher Order Weak Lensing Statistics with automatically differentiable simulations}
+\input{authors}
+
+\begin{abstract}
+In this project we investigate the relative constraining power of various map-based higher order weak lensing statistics in an LSST setting. Such comparisons are typically very costly as they require a large number of simulations, and become intractable for more than 3 or 4 cosmological parameters. Instead we propose a new methodology based on the TensorFlow framework for automatic differentiation, and more specifically the public FlowPM N-body simulation code. By implementing ray-tracing in this framework, we will be able to simulate lensing lightcones, and compute Higher Order lensing statistics on the resulting maps. These statistics can then be differentiated with respect to cosmology, or any systematics included in the simulations, thus allowing, for exact Fisher forecasts.  
+\end{abstract}
+
+\keywords{methods: statistical -- dark energy}
+
+%\accepted{}
+%\submitjournal{the Astrophysical Journal Supplement}
+
+
+%\tableofcontents%-----------------------------
+%===========================
+% BEGINNING OF THE MAIN TEXT
+%===========================
+
+\section{Introduction}
+
+\section{Ray-tracing}
+
+\section{Methods}
+
+\section{Results}
+
+
+\section{Discussion}
+
+\subsection{Future directions}
+
+\section{Conclusions}
+
+%=====================
+% END OF THE MAIN TEXT
+%=====================
+
+\end{document}
