@@ -12,14 +12,7 @@ from flowpm.tfbackground import cosmo, rad_comoving_distance
 from flowpm.tfpm import kick, drift, force
 import flowpm.constants as constants
 
-# @tf.function
-# def power_spectrum_for_cosmology(omega_m, sigma_8):
-#     .... defines a cosmology with omega_m and sigma_8 in it, use it to run the nbody lightcone, compute the born approximation, and power spectrum 
-#     return power_spectrum
 
-
-
-@tf.function
 def power_spectrum_for_cosmology(state, stages, nc,
               plane_resolution, # in arcmin
               plane_size, # in pixels
@@ -134,8 +127,7 @@ def power_spectrum_for_cosmology(state, stages, nc,
     k_map=0
     for i in range(len(lps_a)):
         k_map += cons*lps[i][0]*  w[i]
-    proto_tensor = tf.make_tensor_proto(k_map) 
-    k_map=tf.make_ndarray(proto_tensor)
+    k_map=tf.cast(k_map,dtype=tf.complex64)
     data_ft = tf.signal.fftshift(tf.signal.fft2d(k_map)) / k_map.shape[0]
     nyquist = tf.cast(k_map.shape[0]/2,dtype=tf.int32)
     data=tf.math.real(data_ft*tf.math.conj(data_ft))

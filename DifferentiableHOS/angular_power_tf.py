@@ -85,8 +85,6 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
          
         """
         return field/nc_xy / 180 *np.pi 
-    proto_tensor = tf.make_tensor_proto(map_data) 
-    map_data=tf.make_ndarray(proto_tensor)
     data_ft = tf.signal.fftshift(tf.signal.fft2d(map_data)) / map_data.shape[0]
     nyquist = tf.cast(map_data.shape[0]/2,dtype=tf.int32)
     power_spectrum = radial_profile_tf(tf.math.real(data_ft*tf.math.conj(data_ft)))[:nyquist]
