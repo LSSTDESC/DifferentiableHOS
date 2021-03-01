@@ -48,7 +48,7 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
         r=tf.cast(r,dtype=tf.int32)
         tbin=tf.math.bincount(tf.reshape(r,[-1]), tf.reshape(data,[-1]))
         nr = tf.math.bincount(tf.reshape(r,[-1]))
-        radialprofile=tf.cast(tbin,dtype=tf.float64)/tf.cast(nr,dtype=tf.float64)
+        radialprofile=tf.cast(tbin,dtype=tf.float32)/tf.cast(nr,dtype=tf.float32)
         return radialprofile
     
     
@@ -89,8 +89,8 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
     nyquist = tf.cast(map_data.shape[0]/2,dtype=tf.int32)
     power_spectrum = radial_profile_tf(tf.math.real(data_ft*tf.math.conj(data_ft)))[:nyquist]
     power_spectrum = power_spectrum*pixel_size_tf(field,nc_xy)**2
-    k = tf.range(power_spectrum.shape[0],dtype=tf.float64)
-    ell = 2. * tf.constant(np.pi,dtype=tf.float64) * k / tf.constant(pixel_size_tf(field,nc_xy),dtype=tf.float64) / tf.cast(map_data.shape[0],dtype=tf.float64)
+    k = tf.range(power_spectrum.shape[0],dtype=tf.float32)
+    ell = 2. * tf.constant(np.pi,dtype=tf.float32) * k / tf.constant(pixel_size_tf(field,nc_xy),dtype=tf.float32) / tf.cast(map_data.shape[0],dtype=tf.float32)
     return ell, power_spectrum
 
 
