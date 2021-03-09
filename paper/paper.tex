@@ -50,12 +50,87 @@ In this project we investigate the relative constraining power of various map-ba
 
 \section{FlowPM}
 
-
-
 \section{Ray-tracing}
+In this section, we provide a brief overview of the lensing convergence and the basic concepts of cosmic shear.
+Weak gravitational lensing is a promising observational technique to infer the projected matter density distribution between an observer and a source by measuring galaxy shape correlations. 
+
+In a homogeneous FLRW Universe, the geodesic equation of Light ray trajectories induced by the density fluctuations are expressed as :
+\begin{equation}\label{geod}
+    \frac{d^2\textbf{x}_{\bot}(\chi)}{d\chi^2}
+    = -2 \nabla_{\bot} \Phi(\textbf{x}_{\bot},\chi).
+\end{equation}
+If we integrate Eq.\ref{geod} over the line of sight along $\chi'$ the solution $\textbf{x}_{\bot}$ for the radial comoving distance becomes:
+\begin{equation}
+    \textbf{x}(\chi)=f_k(\chi)\boldsymbol{\theta}-\frac{2}{c^2} 
+    \int_0^{\chi} d\chi'f_k(\chi-\chi')[\boldsymbol{\nabla}_{\bot}\Phi(\textbf{x},\chi')-\boldsymbol{\nabla}_{\bot}\Phi^{(0)}(\chi')]
+\end{equation}
+ where we indicate as $f_k(\chi)$ and $\chi$ the angular and radial comoving distance, respectively.
+ In the absence of lensing the observer would see the distance \textbf{x} under an angle $\boldsymbol{\beta}$$=\textbf{x}(\chi)/f_k(\chi)$.
+ 
+ In the presence of lensing the separation vector \textbf{x} will be seen under an angle $\boldsymbol{\alpha}$, defining as:
+ \begin{equation}
+     \boldsymbol{\alpha}=\frac{2}{c^2} \int_0^{\chi} d\chi'
+     \frac{f_k(\chi-\chi')}{f_k(\chi)}
+     [\boldsymbol{\nabla}_{\bot}\Phi(\textbf{x},\chi')-\boldsymbol{\nabla}_{\bot}\Phi^{(0)}(\chi')].
+ \end{equation}
+ So that, the difference between the apparent angle $\theta$ and the source position $\beta$ defines the lens equation:
+ \begin{equation}
+ \boldsymbol{\alpha=\theta - \beta}.
+ \end{equation}
+In the next section we will infer the lensing potential  $\Phi$ by solving the Poisson equation from the three dimensional density contrast $\delta$:
+\begin{equation}\label{Poisson}
+    \nabla_{\bot}^2 \Phi(x_{\bot},\chi)=
+    \frac{3H_0^2 \Omega_m}{2c^2a(\chi)}
+    \delta(x_{\bot},\chi)
+\end{equation}
+where we indicate as $a$ the scale factor, and  as $\Omega_m$ and $H_0$ the matter density and the Hubble parameter, respectively. 
 
 \subsection{The Born approximation}
 
+
+In this work we implement the Born approximation, integrating the potential gradient along the unperturbed ray. If we consider the series expansion in powers of $\Phi$, assuming that the $\Phi$ is small and considering just the first-order approximation, the gravitational potential  can be written as:
+\begin{equation}
+    \Phi(f_k(\chi')\boldsymbol{\theta},\chi').
+\end{equation}
+We can now define the Jacobian matrix \textbf{A}$=\partial\boldsymbol{\beta}/\partial\boldsymbol{\theta}$, describing the linear mapping from the lensed image to the unlensed source:
+\begin{align}
+    A_{ij}=& \frac{\partial\beta_i}{\partial\theta_j}=
+    \delta_{ij}-\frac{\partial\alpha_i}{\partial\theta_j} \\
+     & =\delta_{ij}-\frac{2}{c^2}
+    \int_0^{\chi} d\chi'
+     \frac{f_k(\chi-\chi')f_k(\chi')}{f_k(\chi)}
+     \frac{\partial^2}{\partial x_i \partial x_j} \Phi(f_k(\chi')\boldsymbol{\theta},\chi').
+\end{align}
+From the parametrization of the symmetrical matrix \textbf{A}, we can define the spin-two shear $\gamma=(\gamma_1,\gamma_2)$ and the scalar convergence field, $\kappa$. 
+Considering this definition the convergence and the shear are defined as second derivative of the potential:
+\begin{equation}\label{kshear}
+    \kappa=\frac{1}{2}(\partial_1\partial_1+\partial_2\partial_2)\psi; \ \gamma_1=\frac{1}{2}(\partial_1\partial_1-\partial_2\partial_2)\psi; \ 
+    \gamma_2=\partial_1\partial_2\psi;
+\end{equation}
+where we define the 2D \textit{lensing potential} $\psi$,
+\begin{equation}
+    \psi(\boldsymbol{\theta},\chi)=
+    -\frac{2}{c^2}
+    \int_0^{\chi} d\chi'
+     \frac{f_k(\chi-\chi')f_k(\chi')}{f_k(\chi)}
+    \Phi(f_k(\chi')\boldsymbol{\theta},\chi').
+\end{equation}
+The two fields $\gamma$ and $\kappa$ describe the distortion in the shape of the image, and the change in the angular size, respectively.
+Considering the Eq.\ref{Poisson} and the Eq.\ref{kshear} the convergence $\kappa$ becomes:
+\begin{equation}
+    \kappa_{born}(\boldsymbol{\theta},\chi_s)= \frac{3H_0^2 \Omega_m}{2c^2}
+    \int_0^{\chi_s} 
+    \frac{d\chi'}{a(\chi')}
+     \frac{f_k(\chi-\chi')}{f_k(\chi)}
+     f_k(\chi')
+    \delta(f_k(\chi')\boldsymbol{\theta},\chi').
+\end{equation}
+
+%\begin{equation}
+%where $n(\chi)$ is a redshift independent factor of normalization from Poisson equation.
+ %   n(\chi)=(AB)(\chi^2)
+%\end{equation}
+%where $A$ is the two dimensional mesh area in $rad^2$ per pixel and $B$ is the mean 3 dimensional particle density in the all cube.
 
 
 \section{Methods}
