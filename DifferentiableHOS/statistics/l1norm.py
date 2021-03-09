@@ -51,7 +51,8 @@ def l1norm(image, nscales=3, value_range=[-1., 1.], nbins=16, name='l1norm'):
                                            nbins=nbins,
                                            dtype=tf.int32)
       # Compute l1 norm in each bin
-      l1norm = [tf.reduce_sum(tf.math.abs(tf.where(bins == i, coeffs, 0)))
+      l1norm = [tf.reduce_sum(tf.math.abs(tf.where(bins == i, coeffs, 0)),
+                              axis=[1, 2, 3])
                 for i in range(nbins)]
-      results.append(tf.stack(l1norm))
+      results.append(tf.stack(l1norm, axis=-1))
     return results
