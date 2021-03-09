@@ -31,7 +31,7 @@ def starlet2d(image, nscales=4, name="starlet2d"):
 
     for i in range(nscales):
       c_i = tf.nn.atrous_conv2d(approx, W, 2**i, padding="VALID")
-      _, h, w, c = tf.shape(c_i)
+      _, h, w, c = c_i.get_shape()
       coeffs.append(tf.image.resize_with_crop_or_pad(approx, h, w) - c_i)
       approx = c_i
     coeffs.append(approx)
