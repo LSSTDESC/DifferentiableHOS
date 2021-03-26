@@ -10,7 +10,6 @@ import tensorflow as tf
 import numpy as np
 #import DifferentiableHOS as DHOS
 import flowpm
-# TODO: This is very annoying, we need to fix the FlowPM imports
 import flowpm.tfpower as tfpower
 import flowpm.scipy.interpolate as interpolate
 from absl import app
@@ -50,11 +49,6 @@ def compute_Nbody(Omega_c, sigma8):
                                            pk_fun,
                                            batch_size=1)
 
-  # r = tf.linspace(0., 200, FLAGS.nsteps)
-  # a = flowpm.tfbackground.a_of_chi(cosmology, r)
-
-  # Sample particles, using LPT up to the border of the lightcone
-  # WARNING: this is probably very approximate
   state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
   
