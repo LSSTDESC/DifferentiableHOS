@@ -71,15 +71,18 @@ def compute_jacobian(Omega_c, sigma8):
     tape.watch(params)
     final_field = compute_Nbody(params[0], params[1])
     k, power_spectrum = pkl(final_field,shape=final_field.shape,boxsize=np.array([FLAGS.box_size, FLAGS.box_size,
-                                           FLAGS.box_size]),kmin=0.1,dk=0.03)
+                                           FLAGS.box_size]),kmin=0.1,dk=2*np.pi/FLAGS.box_size)
 
+    k1 =tf.where(k < 0.3 ,False, True)
+    k=tf.boolean_mask(k, tf.math.logical_not(k1))
+    power_spectrum =tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
   return final_field, tape.jacobian(power_spectrum, params,experimental_use_pfor=False), k, power_spectrum
 
 
 
 def main(_):
   # Query the jacobian
- 
+
     final_field, jacobian, k, power_spectrum = compute_jacobian(tf.convert_to_tensor(FLAGS.Omega_c,
                                                               dtype=tf.float32),
                                           tf.convert_to_tensor(FLAGS.sigma8,
