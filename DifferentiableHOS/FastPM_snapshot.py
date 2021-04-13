@@ -103,7 +103,7 @@ class FastPMSnapshot(NbodySnapshot):
 		
 		#Read in positions in Mpc/h
 		if (first is None) or (last is None):
-			positions = (data["0/Position"][:] + 0.5/64*200 )*self.Mpc_over_h
+			positions = (data["0/Position"][:] + 0.5/1024*200 )*self.Mpc_over_h
 		else:
 			positions = data["0/Position"][first:last]*self.Mpc_over_h
 
@@ -123,8 +123,7 @@ class FastPMSnapshot(NbodySnapshot):
 
 		#Return
 		return positions 
-
-	###########################################################################################
+###########################################################################################
 
 	def getVelocities(self,first=None,last=None,save=True):
 		raise NotImplementedError
