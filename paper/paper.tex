@@ -87,8 +87,8 @@ where we indicate as $a$ the scale factor, and  as $\Omega_m$ and $H_0$ the matt
 
 \subsection{The Born approximation}
 
-
-In this work we implement the Born approximation, integrating the potential gradient along the unperturbed ray. If we consider the series expansion in powers of $\Phi$, assuming that the $\Phi$ is small and considering just the first-order approximation, the gravitational potential  can be written as:
+We know that the knowledge of the lensing potential and the use of accurate solvers for light ray trajectories could be computationally expensive.
+For this reason, in this work we implement the Born approximation, integrating the potential gradient along the unperturbed ray. If we consider the series expansion in powers of $\Phi$, assuming that the $\Phi$ is small and considering just the first-order approximation, the gravitational potential  can be written as:
 \begin{equation}
     \Phi(f_k(\chi')\boldsymbol{\theta},\chi').
 \end{equation}
@@ -134,6 +134,20 @@ Considering the Eq.\ref{Poisson} and the Eq.\ref{kshear} the convergence $\kappa
 
 
 \section{Methods}
+
+Our weak lensing simulation tool is based on FlowPM (/cite Modi, Lanusse et al. ), a fast particle-mesh solver that implements the time integration for gravitational evolution starting from the Gaussian initial conditions of the Universe to the observed large scale structures through a Kick-Drift scheme.
+
+
+After instantiating the $\Lambda$CDM cosmology with our desired parameters, (the initial power spectrum and the evolution of the particles depend from $\sigma_8$ and $\Omega_{c}$) we created the initial condition for the N-body simulation using the normalised linear matter power spectrum as implemented by (/cite Eisenstein and Hu of '98 ) and generated the linear field at requested scale. After that, we implemented the N-body. As said before, The N-body simulation does the time integration of a given initial linear field  across a given array of scale factors implementing a series of Kick-Drift-Kick operations. 
+During the \textit{Kick} operation we estimate the gravitational force experienced by every particles implementing Fast Fourier Transform and update their momentum. In the next state, \textit{Drift}, the particles are displaced and their positions is updated with the velocity estimated in the previous step. This operation is continued until the observed large scale structures at the final time-step.
+To perform the lightcone computation and extract the lens planes,  we export several intermediate state from the N-body simulation. From a given intermediate state we extract a slice and project it as a density plane by painting the particles on a 2D mesh. 
+After creating a grid of coordinates, the lens planes are interpolated onto sky coordinates. 
+ At this point, we have constructed a ray tracer object, to compute the convergence, we directly integrate the lensing density along the unperturbed line of sight. 
+
+
+
+
+
 
 \section{Results}
 
