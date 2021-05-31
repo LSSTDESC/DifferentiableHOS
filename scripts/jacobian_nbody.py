@@ -16,6 +16,7 @@ from absl import app
 from absl import flags
 from DifferentiableHOS.pk import pk as pkl
 import pickle
+import numdifftools as nd
 #%%
 flags.DEFINE_string("filename", "results.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
@@ -27,6 +28,7 @@ flags.DEFINE_float("field", 5., "Transverse size of the lensing field [deg]")
 flags.DEFINE_integer("nsteps", 30, "Number of time steps in the lightcone")
 
 FLAGS = flags.FLAGS
+
 
 #%%
 @tf.function
@@ -40,24 +42,28 @@ def compute_Nbody(Omega_c, sigma8):
   # Compute linear matter power spectrum
   k = tf.constant(np.logspace(-4, 1, 256), dtype=tf.float32)
   pk = tfpower.linear_matter_power(cosmology, k)
-  pk_fun = lambda x: tf.cast(tf.reshape(interpolate.interp_tf(tf.reshape(tf.cast(x, tf.float32), [-1]), k, pk), x.shape), tf.complex64)
+  pk_fun = lambda x: tf.cast(
+      tf.reshape(
+          interpolate.interp_tf(tf.reshape(tf.cast(x, tf.float32), [-1]), k, pk
+                                ), x.shape), tf.complex64)
 
   # And initial conditions
-  initial_conditions = flowpm.linear_field([FLAGS.nc, FLAGS.nc, FLAGS.nc],
-                                           [FLAGS.box_size, FLAGS.box_size,
-                                           FLAGS.box_size],
-                                           pk_fun,
-                                           batch_size=1)
+  initial_conditions = flowpm.linear_field(
+      [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+      [FLAGS.box_size, FLAGS.box_size, FLAGS.box_size],
+      pk_fun,
+      batch_size=1)
 
   state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
-  
-   # Evolve particles from initial state down to a=af
-  final_state = flowpm.nbody(cosmology, state, stages, [FLAGS.nc, FLAGS.nc,  FLAGS.nc])         
+  # Evolve particles from initial state down to a=af
+  final_state = flowpm.nbody(cosmology, state, stages,
+                             [FLAGS.nc, FLAGS.nc, FLAGS.nc])
 
   # Retrieve final density field i.e interpolate the particles to the mesh
-  final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions), final_state[0])
-  final_field=tf.reshape(final_field, [FLAGS.nc, FLAGS.nc, FLAGS.nc])
+  final_field = flowpm.cic_paint(tf.zeros_like(initial_conditions),
+                                 final_state[0])
+  final_field = tf.reshape(final_field, [FLAGS.nc, FLAGS.nc, FLAGS.nc])
   return final_field
 
 
@@ -70,30 +76,35 @@ def compute_jacobian(Omega_c, sigma8):
   with tf.GradientTape() as tape:
     tape.watch(params)
     final_field = compute_Nbody(params[0], params[1])
-    k, power_spectrum = pkl(final_field,shape=final_field.shape,boxsize=np.array([FLAGS.box_size, FLAGS.box_size,
-                                           FLAGS.box_size]),kmin=0.1,dk=2*np.pi/FLAGS.box_size)
+    k, power_spectrum = pkl(
+        final_field,
+        shape=final_field.shape,
+        boxsize=np.array([FLAGS.box_size, FLAGS.box_size, FLAGS.box_size]),
+        kmin=0.1,
+        dk=2 * np.pi / FLAGS.box_size)
 
-    k1 =tf.where(k < 0.3 ,False, True)
-    k=tf.boolean_mask(k, tf.math.logical_not(k1))
-    power_spectrum =tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
-  return final_field, tape.jacobian(power_spectrum, params,experimental_use_pfor=False), k, power_spectrum
-
+    k1 = tf.where(k < 0.3, False, True)
+    k = tf.boolean_mask(k, tf.math.logical_not(k1))
+    power_spectrum = tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
+  return final_field, tape.jacobian(
+      power_spectrum, params, experimental_use_pfor=False), k, power_spectrum
 
 
 def main(_):
   # Query the jacobian
 
-    final_field, jacobian, k, power_spectrum = compute_jacobian(tf.convert_to_tensor(FLAGS.Omega_c,
-                                                              dtype=tf.float32),
-                                          tf.convert_to_tensor(FLAGS.sigma8,
-                                                              dtype=tf.float32))
- 
-  # Saving results in requested filename
-    pickle.dump({'final_field': final_field.numpy(), 'k': k.numpy(),
-                  'power_spectrum': power_spectrum.numpy(), 'jac': jacobian.numpy()},
-                open(FLAGS.filename, "wb"))
+  final_field, jacobian, k, power_spectrum = compute_jacobian(
+      tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
+      tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
 
-  
+  # Saving results in requested filename
+  pickle.dump(
+      {
+          'final_field': final_field.numpy(),
+          'k': k.numpy(),
+          'power_spectrum': power_spectrum.numpy(),
+          'jac': jacobian.numpy()
+      }, open(FLAGS.filename, "wb"))
 
 
 if __name__ == "__main__":
