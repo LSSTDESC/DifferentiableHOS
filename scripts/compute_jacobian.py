@@ -105,11 +105,9 @@ def compute_kappa(Omega_c, sigma8):
 
   return m, lensplanes, r_center, a_center
 
-
 def rebin(a, shape):
-    sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
-    return tf.math.reduce_mean(tf.math.reduce_mean(tf.reshape(a,sh),axis=-1),axis=1)
-
+    sh = shape,a.shape[0]//shape
+    return tf.math.reduce_mean(tf.reshape(a,sh),axis=-1)
 
 @tf.function
 def compute_jacobian(Omega_c, sigma8):
@@ -119,14 +117,10 @@ def compute_jacobian(Omega_c, sigma8):
   with tf.GradientTape() as tape:
     tape.watch(params)
     m, lensplanes, r_center, a_center = compute_kappa(params[0], params[1])
-    ell0, power_spectrum0 = DHOS.statistics.power_spectrum(
+    ell, power_spectrum = DHOS.statistics.power_spectrum(
         m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
-    a=tf.reshape(ell0,(4,64))
-    ell=tf.reshape(rebin(a,(4,8)),(1,32))
-    power_spectrum=interpolate.interp_tf(tf.reshape(ell, [-1]), ell0,power_spectrum0)
-    # k1 = tf.where(ell < 650, False, True)
-    # ell = tf.boolean_mask(ell, tf.math.logical_not(k1))
-    # power_spectrum = tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
+    ell=rebin(ell,32)
+    power_spectrum=rebin(power_spectrum,32)
 
   return m, lensplanes, r_center, a_center, tape.jacobian(
       power_spectrum, params, experimental_use_pfor=False), ell, power_spectrum
