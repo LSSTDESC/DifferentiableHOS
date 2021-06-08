@@ -21,12 +21,12 @@ import numdifftools as nd
 flags.DEFINE_string("filename", "results.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
-flags.DEFINE_integer("nc", 32, "Transverse size of the cube")
+flags.DEFINE_integer("nc", 128, "Transverse size of the cube")
 flags.DEFINE_integer("plane_size", 32, "Number of pixels in x,y")
 flags.DEFINE_float("box_size", 200, "Transverse box size [Mpc/h]")
 flags.DEFINE_float("field", 5., "Transverse size of the lensing field [deg]")
 flags.DEFINE_integer("nsteps", 30, "Number of time steps in the lightcone")
-
+flags.DEFINE_integer("end", 0.1 , "last step in the lightcone")
 FLAGS = flags.FLAGS
 
 
@@ -38,7 +38,7 @@ def compute_Nbody(Omega_c, sigma8):
   """
   # Instantiates a cosmology with desired parameters
   cosmology = flowpm.cosmology.Planck15(Omega_c=Omega_c, sigma8=sigma8)
-  stages = np.linspace(0.1, 1., FLAGS.nsteps, endpoint=True)
+  stages = np.linspace(FLAGS.end,1., FLAGS.nsteps, endpoint=True)
   # Compute linear matter power spectrum
   k = tf.constant(np.logspace(-4, 1, 256), dtype=tf.float32)
   pk = tfpower.linear_matter_power(cosmology, k)
@@ -54,7 +54,7 @@ def compute_Nbody(Omega_c, sigma8):
       pk_fun,
       batch_size=1)
 
-  state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
+  state = flowpm.lpt_init(cosmology, initial_conditions, FLAGS.end)
 
   # Evolve particles from initial state down to a=af
   final_state = flowpm.nbody(cosmology, state, stages,
@@ -82,10 +82,11 @@ def compute_jacobian(Omega_c, sigma8):
         boxsize=np.array([FLAGS.box_size, FLAGS.box_size, FLAGS.box_size]),
         kmin=0.1,
         dk=2 * np.pi / FLAGS.box_size)
-
-    k1 = tf.where(k < 0.3, False, True)
-    k = tf.boolean_mask(k, tf.math.logical_not(k1))
-    power_spectrum = tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
+    k=rebin(k,32)
+    power_spectrum=rebin(power_spectrum,32)
+    #k1 = tf.where(k < 0.3, False, True)
+    #k = tf.boolean_mask(k, tf.math.logical_not(k1))
+    #power_spectrum = tf.boolean_mask(power_spectrum, tf.math.logical_not(k1))
   return final_field, tape.jacobian(
       power_spectrum, params, experimental_use_pfor=False), k, power_spectrum
 
