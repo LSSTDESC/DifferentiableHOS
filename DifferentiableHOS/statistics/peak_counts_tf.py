@@ -10,7 +10,7 @@ import tensorflow_probability as tfp
 
 
 @tf.function
-def find_peaks2d_tf(image,mask = None, ordered=True,threshold=0.0):
+def find_peaks2d_tf(image,mask = None, ordered=True,threshold=None):
     if mask is not None:
       #  mask = np.atleast_2d(mask)
         if mask.shape != image.shape:
@@ -22,7 +22,11 @@ def find_peaks2d_tf(image,mask = None, ordered=True,threshold=0.0):
     else:
         mask = tf.ones(image.shape)
         
-    threshold = tf.math.reduce_max((0.0,tf.math.reduce_min(image)))
+    if threshold is None:
+        threshold = tf.math.reduce_min(image)
+    else:
+        threshold = tf.math.reduce_max((threshold,tf.math.reduce_min(image)))
+
 
     offset = tf.math.reduce_min(image)
     threshold = threshold - offset
