@@ -52,7 +52,7 @@ def compute_kappa(Omega_c, sigma8):
   stages = tf.concat([init_stages, a_center[::-1]], axis=0)
 
   # Create some initial conditions
-  k = tf.constant(np.logspace(-4, 1, 256), dtype=tf.float32)
+  k = tf.constant(np.logspace(-4, 1, 512), dtype=tf.float32)
   pk = linear_matter_power(cosmology, k)
   pk_fun = lambda x: tf.cast(tf.reshape(interpolate.interp_tf(tf.reshape(tf.cast(x, tf.float32), [-1]), k, pk), x.shape), tf.complex64)
   initial_conditions = flowpm.linear_field(
@@ -90,10 +90,10 @@ def compute_kappa(Omega_c, sigma8):
       np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
                   endpoint=False))  # range of Y coordinates
 
-  coords = np.stack([xgrid, ygrid], axis=0) * u.deg
-  c = coords.reshape([2, -1]).T.to(u.rad)
+  coords = np.stack([xgrid, ygrid], axis=0) 
+  c = coords.reshape([2, -1]).T / 180.*np.pi # convert to rad from deg
   # Create array of source redshifts
-  z_source = tf.linspace(0.5, 1, 4)
+  z_source = tf.constant([1.])
   m = flowpm.raytracing.convergenceBorn(cosmology,
                                         lensplanes,
                                         dx=FLAGS.box_size / 256,
@@ -104,6 +104,23 @@ def compute_kappa(Omega_c, sigma8):
   m = tf.reshape(m, [1, FLAGS.field_npix, FLAGS.field_npix, -1])
 
   return m, lensplanes, r_center, a_center
+
+
+def desc_y1_analysis(kmap):
+  """
+  Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
+  """
+  ngal = 10                          # gal/arcmin **2
+  pix_scale = 5/512*60              # arcmin
+  ngal_per_pix = ngal * pix_scale**2 # galaxies per pixels (I think)
+  sigma_e = 0.26 / np.sqrt(ngal_per_pix) # Rescaled noise sigma
+  sigma_pix=2./pix_scale             # Smooth at 1 arcmin
+
+  # Add noise
+  kmap  = kmap + sigma_e * tf.random.normal(kmap.shape)
+  # Add smoothing
+  kmap = tfa.image.gaussian_filter2d(kmap,21,sigma=sigma_pix)
+  return kmap
 
 def rebin(a, shape):
     sh = shape,a.shape[0]//shape
@@ -117,18 +134,40 @@ def compute_jacobian(Omega_c, sigma8):
   with tf.GradientTape() as tape:
     tape.watch(params)
     m, lensplanes, r_center, a_center = compute_kappa(params[0], params[1])
+    
+    # Adds realism to convergence map
+    kmap = desc_y1_analysis(m)
+    
+    # Compute power spectrum
     ell, power_spectrum = DHOS.statistics.power_spectrum(
-        m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
-    ell=rebin(ell,32)
-    power_spectrum=rebin(power_spectrum,32)
+        kmap[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
 
-  return m, lensplanes, r_center, a_center, tape.jacobian(
-      power_spectrum, params, experimental_use_pfor=False), ell, power_spectrum
+    # Keep only ell below 3000
+    ell = ell[:21] 
+    power_spectrum = power_spectrum[:21]
 
+    # Further reducing the nnumber of points
+    ell=rebin(ell,7)
+    power_spectrum=rebin(power_spectrum,7)
+
+    # # Compute the peak counts
+    # vmin=-0.025
+    # vmax=0.1
+    # bins = tf.linspace(vmin, vmax, 8)
+    # counts, edges = DHOS.statistics.peaks_histogram_tf(tf.clip_by_value(kmap[0, :, :, -1], vmin, vmax),
+    #                                                   bins=bins)
+
+    # Compute l1norm
+    l1 = DHOS.statistics.l1norm(kmap[...,0], nbins=7, value_range=[-0.05, 0.05])[1][0]
+
+    jac = tape.jacobian(tf.stack([power_spectrum, l1]), params,
+                         experimental_use_pfor=False)
+
+  return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum, jac, l1# edges, counts
 
 def main(_):
   # Query the jacobian
-  m, lensplanes, r_center, a_center, jacobian, ell, ps = compute_jacobian(
+  m, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps, jac_peaks, l1 = compute_jacobian(
       tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32), tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
   # Saving results in requested filename
   pickle.dump(
@@ -137,9 +176,12 @@ def main(_):
           'lensplanes': lensplanes,
           'r': r_center,
           'map': m.numpy(),
+          'kmap': kmap.numpy(),
           'ell': ell.numpy(),
           'ps': ps.numpy(),
-          'jac': jacobian.numpy()
+          'jac_ps': jac_ps.numpy(),
+          'jac_peaks': jac_peaks.numpy(),
+          'l1': l1.numpy()
       }, open(FLAGS.filename, "wb"))
 
 if __name__ == "__main__":
