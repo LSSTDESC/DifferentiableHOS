@@ -52,7 +52,7 @@ def compute_kappa(Omega_c, sigma8):
   stages = tf.concat([init_stages, a_center[::-1]], axis=0)
 
   # Create some initial conditions
-  k = tf.constant(np.logspace(-4, 1, 512), dtype=tf.float32)
+  k = tf.constant(np.logspace(-4, 1, 128), dtype=tf.float32)
   pk = linear_matter_power(cosmology, k)
   pk_fun = lambda x: tf.cast(tf.reshape(interpolate.interp_tf(tf.reshape(tf.cast(x, tf.float32), [-1]), k, pk), x.shape), tf.complex64)
   initial_conditions = flowpm.linear_field(
@@ -160,8 +160,8 @@ def compute_jacobian(Omega_c, sigma8):
     # Compute l1norm
     l1 = DHOS.statistics.l1norm(kmap[...,0], nbins=7, value_range=[-0.05, 0.05])[1][0]
 
-    jac = tape.jacobian(tf.stack([power_spectrum, l1]), params,
-                         experimental_use_pfor=False)
+    stat = tf.stack([power_spectrum, l1])
+  jac = tape.jacobian(stat, params, experimental_use_pfor=False)
 
   return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum, jac, l1# edges, counts
 
