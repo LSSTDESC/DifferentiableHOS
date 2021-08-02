@@ -4,9 +4,11 @@
 #SBATCH --constraint=haswell
 #SBATCH --array=0-9
 #SBATCH -t 02:00:00
+#SBATCH --mail-user=denise.lanzieri@cea.fr
 
-module load tensorflow/intel-2.4.1
+module load python3/3.8-anaconda-2020.11
 
-cd /global/u2/f/flanusse/scratch/Diff
+cd /global/cscratch1/sd/dlan/jacobian_ps
 
-python ~/repo/DifferentiableHOS/scripts/compute_jacobian_ps.py  --filename=res_ps_$SLURM_ARRAY_TASK_ID
+
+python /global/homes/d/dlan/DifferentiableHOS/scripts/compute_jacobian_ps.py  --filename=res_ps_$SLURM_ARRAY_TASK_ID

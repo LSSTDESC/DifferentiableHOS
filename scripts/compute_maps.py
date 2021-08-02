@@ -38,7 +38,7 @@ flags.DEFINE_float("kl", 1.747188, "long range scale parameter of PGD correction
 FLAGS = flags.FLAGS
 
 
-#@tf.function
+
 def compute_kappa(Omega_c, sigma8):
   """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
