@@ -15,12 +15,12 @@ import tensorflow_addons as tfa
 import time
 from flowpm import tfpm
 
-flags.DEFINE_string("filename", "results_jac_ps_m.pkl", "Output filename")
+flags.DEFINE_string("filename", "jac_ps.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 64,
                      "Number of transverse voxels in the simulation volume")
-flags.DEFINE_integer("field_npix", 1024,
+flags.DEFINE_integer("field_npix", 512,
                      "Number of pixels in the lensing field")
 flags.DEFINE_float("box_size", 64.,
                    "Transverse comoving size of the simulation volume")
@@ -28,7 +28,6 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
 flags.DEFINE_float("batch_size", 1, "Number of simulations to run in parallel")
 flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
-flags.DEFINE_float("B", 2, "Scale resolution factor")
 flags.DEFINE_float("alpha0", 0.01, "alpha0 parameter of PGD correction")
 flags.DEFINE_float("mu",-1.659049, "mu parameter of PGD correction")
 flags.DEFINE_float("ks", 12.49952, "short range scale parameter of PGD correction")
@@ -36,7 +35,7 @@ flags.DEFINE_float("kl", 1.747188, "long range scale parameter of PGD correction
 
 FLAGS = flags.FLAGS
 
-
+@tf.function
 def compute_kappa(Omega_c, sigma8):
   """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
@@ -72,6 +71,7 @@ def compute_kappa(Omega_c, sigma8):
   states = flowpm.nbody(cosmology,
                         initial_state,
                         stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+                        pm_nc_factor=1,
                         return_intermediate_states=True)
   dx=[]
   new_states=[]
@@ -79,7 +79,7 @@ def compute_kappa(Omega_c, sigma8):
   kl=FLAGS.kl*0.7*0.5/(FLAGS.nc*2/FLAGS.box_size)
   for i in range(len(states)):
         alpha=FLAGS.alpha0*states[i][0]**FLAGS.mu
-        dx.append(tfpm.PGD_correction(states[i][1],[FLAGS.nc,FLAGS.nc,FLAGS.nc],alpha,kl,ks,pm_nc_factor=2))
+        dx.append(tfpm.PGD_correction(states[i][1],[FLAGS.nc,FLAGS.nc,FLAGS.nc],alpha,kl,ks,pm_nc_factor=1))
         new_states.append((states[i][0], dx[i]+states[i][1][0]))
   # Extract the lensplanes
   lensplanes = []
@@ -134,7 +134,7 @@ def rebin(a, shape):
     sh = shape,a.shape[0]//shape
     return tf.math.reduce_mean(tf.reshape(a,sh),axis=-1)
 
-
+@tf.function
 def compute_jacobian(Omega_c, sigma8):
   """ Function that actually computes the Jacobian of a given statistics
     """
@@ -148,15 +148,15 @@ def compute_jacobian(Omega_c, sigma8):
     
     # Compute power spectrum
     ell, power_spectrum = DHOS.statistics.power_spectrum(
-        kmap[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
+        m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
 
     # Keep only ell below 3000
-    ell = ell[2:46]
-    power_spectrum = power_spectrum[2:46]
+    ell = ell[:21]
+    power_spectrum = power_spectrum[:21]
 
     # Further reducing the nnumber of points
-    ell=rebin(ell,11)
-    power_spectrum=rebin(power_spectrum,11)
+    ell=rebin(ell,7)
+    power_spectrum=rebin(power_spectrum,7)
   jac = tape.jacobian(power_spectrum, params, experimental_use_pfor=False)
 
   return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum

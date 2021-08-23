@@ -27,8 +27,7 @@ flags.DEFINE_float("box_size", 64.,
 flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
 flags.DEFINE_float("batch_size", 1, "Number of simulations to run in parallel")
-flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
-flags.DEFINE_float("B", 2, "Scale resolution factor")
+flags.DEFINE_integer("nmaps", 30, "Number maps to generate.")
 flags.DEFINE_float("alpha0", 0.01, "alpha0 parameter of PGD correction")
 flags.DEFINE_float("mu",-1.659049, "mu parameter of PGD correction")
 flags.DEFINE_float("ks", 12.49952, "short range scale parameter of PGD correction")
@@ -38,7 +37,7 @@ flags.DEFINE_float("kl", 1.747188, "long range scale parameter of PGD correction
 FLAGS = flags.FLAGS
 
 
-
+@tf.function
 def compute_kappa(Omega_c, sigma8):
   """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
@@ -74,6 +73,7 @@ def compute_kappa(Omega_c, sigma8):
   states = flowpm.nbody(cosmology,
                         initial_state,
                         stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+                        pm_nc_factor=1,
                         return_intermediate_states=True)
   dx=[]
   new_states=[]
@@ -81,7 +81,7 @@ def compute_kappa(Omega_c, sigma8):
   kl=FLAGS.kl*0.7*0.5/(FLAGS.nc*2/FLAGS.box_size)
   for i in range(len(states)):
         alpha=FLAGS.alpha0*states[i][0]**FLAGS.mu
-        dx.append(tfpm.PGD_correction(states[i][1],[FLAGS.nc,FLAGS.nc,FLAGS.nc],alpha,kl,ks,pm_nc_factor=2))
+        dx.append(tfpm.PGD_correction(states[i][1],[FLAGS.nc,FLAGS.nc,FLAGS.nc],alpha,kl,ks,pm_nc_factor=1))
         new_states.append((states[i][0], dx[i]+states[i][1][0]))
   # Extract the lensplanes
   lensplanes = []
