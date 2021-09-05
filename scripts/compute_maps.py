@@ -125,9 +125,6 @@ def main(_):
     # Saving results in requested filename
     pickle.dump(
       {
-          'a': a_center,
-          'lensplanes': lensplanes,
-          'r': r_center,
           'kmap': kmap.numpy(),
       }, open(FLAGS.filename+'_%d'%i, "wb"))
     print("iter",i, "took", time.time()-t)
