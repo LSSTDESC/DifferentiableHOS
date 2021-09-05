@@ -85,6 +85,7 @@ def compute_kappa(Omega_c, sigma8, pgdparams):
     )
 
     plane = tf.expand_dims(plane, axis=-1)
+    plane = tfa.image.gaussian_filter2d(plane, filter_shape=21, sigma=2.048)
     lensplanes.append((r_center[i], states[::-1][i][0], plane[..., 0]))
   xgrid, ygrid = np.meshgrid(
       np.linspace(0, FLAGS.field_size, FLAGS.field_npix,

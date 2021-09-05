@@ -18,14 +18,14 @@ import astropy.units as u
 
 flags.DEFINE_string("filename", "results_fit_PGD.pkl", "Output filename")
 flags.DEFINE_integer("niter", 51, "Number of iterations of the first PGD fit")
-flags.DEFINE_integer("niter_refine", 51,
+flags.DEFINE_integer("niter_refine", 21,
                      "Number of iterations of subsequent PGD fit")
 flags.DEFINE_float("learning_rate", 0.1, "ADAM learning rate for the PGD optim")
 flags.DEFINE_integer("batch_size", 2, "Number of random draws")
 
-flags.DEFINE_float("alpha0", 1.0, "Initial guess for alpha at z=0")
-flags.DEFINE_float("kl0", 1.0, "Initial guess for kl at z=0")
-flags.DEFINE_float("ks0", 13, "Initial guess for ks at z=0")
+flags.DEFINE_float("alpha0", 0.1, "Initial guess for alpha at z=0")
+flags.DEFINE_float("kl0", 0.3, "Initial guess for kl at z=0")
+flags.DEFINE_float("ks0", 10, "Initial guess for ks at z=0")
 
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
