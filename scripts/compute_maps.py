@@ -13,6 +13,7 @@ import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
 import time
+from flowpm import tfpm
 
 flags.DEFINE_string("filename", "results_maps.pkl", "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD.pkl", "PGD parameter files")
@@ -130,4 +131,4 @@ def main(_):
     print("iter",i, "took", time.time()-t)
 
 if __name__ == "__main__":
-  app.run(main)
+    app.run(main)
