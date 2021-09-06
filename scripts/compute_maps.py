@@ -105,7 +105,7 @@ def compute_kappa(Omega_c, sigma8, pgdparams):
                                         coords=c,
                                         z_source=z_source)
 
-  m = tf.reshape(m, [1, FLAGS.field_npix, FLAGS.field_npix, -1])
+  m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix, -1])
 
   return m, lensplanes, r_center, a_center
 
