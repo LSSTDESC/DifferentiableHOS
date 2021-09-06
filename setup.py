@@ -6,9 +6,7 @@ setup(name='DifferentiableHOS',
       author='Denise Lanzieri',
       license='MIT',
       packages=find_packages(),
-      install_requires=[
-          'flowpm'
-      ],
+      install_requires=['flowpm'],
       tests_require=['lenspack'],
       extras_require={
           'testing': ['lenspack'],

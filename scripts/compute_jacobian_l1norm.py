@@ -13,9 +13,8 @@ import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
 import time
-from flowpm import tfpm
 
-flags.DEFINE_string("filename", "jac_16_.pkl", "Output filename")
+flags.DEFINE_string("filename", "results_maps.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 64,
@@ -28,12 +27,12 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("init_nsteps", 4, "Number of steps before the lightcone")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
-flags.DEFINE_integer("batch_size", 1,
-                     "Number of simulations to run in parallel")
+flags.DEFIN_integer("batch_size", 1, "Number of simulations to run in parallel")
+flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
 flags.DEFINE_integer("B", 1, "Scale resolution factor")
 
-FLAGS = flags.FLAGS
 
+FLAGS = flags.FLAGS
 
 @tf.function
 def compute_kappa(Omega_c, sigma8):
@@ -67,10 +66,10 @@ def compute_kappa(Omega_c, sigma8):
         [FLAGS.nc, FLAGS.nc, FLAGS.nc],
         [FLAGS.box_size, FLAGS.box_size, FLAGS.box_size],
         pk_fun,
-        batch_size=FLAGS.batch_size)
+        batch_size=FLAGS.batch_size))
     initial_state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
-    # Run the Nbody
+        # Run the Nbody
     states = flowpm.nbody(cosmology,
                           initial_state,
                           stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
@@ -120,8 +119,8 @@ def compute_kappa(Omega_c, sigma8):
                                           coords=c,
                                           z_source=z_source)
 
-    m = tf.reshape(m,
-                   [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix, -1])
+    m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix,-1])
+
     return m, lensplanes, r_center, a_center
 
 
@@ -158,39 +157,36 @@ def compute_jacobian(Omega_c, sigma8):
         # Adds realism to convergence map
         kmap = desc_y1_analysis(m)
 
-        # Compute power spectrum
-        ell, power_spectrum = DHOS.statistics.power_spectrum(
-            m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
+        # Compute l1norm
+        l1 = DHOS.statistics.l1norm(kmap[..., 0],
+                                    nscales=7,
+                                    nbins=16,
+                                    value_range=[-0.05, 0.05])[1][0]
 
-        # Keep only ell between 300 and 3000
-        ell = ell[2:46]
-        power_spectrum = power_spectrum[2:46]
+    jac = tape.jacobian(l1, params, experimental_use_pfor=False)
 
-        # Further reducing the nnumber of points
-        ell = rebin(ell, 11)
-        power_spectrum = rebin(power_spectrum, 11)
-    jac = tape.jacobian(power_spectrum, params, experimental_use_pfor=False)
-
-    return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return m, kmap, lensplanes, r_center, a_center, jac, l1
 
 
 def main(_):
-    # Query the jacobian
-    m, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
-        tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-        tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
-    # Saving results in requested filename
-    pickle.dump(
-        {
-            'a': a_center,
-            'lensplanes': lensplanes,
-            'r': r_center,
-            'map': m.numpy(),
-            'kmap': kmap.numpy(),
-            'ell': ell.numpy(),
-            'ps': ps.numpy(),
-            'jac_ps': jac_ps.numpy()
-        }, open(FLAGS.filename, "wb"))
+    for i in range(FLAGS.nmaps):
+        t = time.time()
+        # Query the jacobian
+        m, kmap, lensplanes, r_center, a_center, jac, l1 = compute_jacobian(
+            tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
+        # Saving results in requested filename
+        pickle.dump(
+            {
+                'a': a_center,
+                'lensplanes': lensplanes,
+                'r': r_center,
+                'map': m.numpy(),
+                'kmap': kmap.numpy(),
+                'jac': jac.numpy(),
+                'l1': l1.numpy()
+            }, open(FLAGS.filename + '_%d' % i, "wb"))
+        print("iter", i, "took", time.time() - t)
 
 
 if __name__ == "__main__":

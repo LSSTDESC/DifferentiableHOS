@@ -15,7 +15,7 @@ import tensorflow_addons as tfa
 import time
 from flowpm import tfpm
 
-flags.DEFINE_string("filename", "jac_16_.pkl", "Output filename")
+flags.DEFINE_string("filename", "results_maps.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 64,
@@ -30,6 +30,7 @@ flags.DEFINE_integer("init_nsteps", 4, "Number of steps before the lightcone")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
+flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
 flags.DEFINE_integer("B", 1, "Scale resolution factor")
 
 FLAGS = flags.FLAGS
@@ -51,7 +52,7 @@ def compute_kappa(Omega_c, sigma8):
     a = flowpm.tfbackground.a_of_chi(cosmology, r)
     a_center = flowpm.tfbackground.a_of_chi(cosmology, r_center)
 
-    # We run 4 steps from initial scale factor to start of raytracing
+    # We run several steps from initial scale factor to start of raytracing
     init_stages = tf.linspace(FLAGS.a_init, a[-1], FLAGS.init_nsteps)
     # Then one step per lens plane
     stages = tf.concat([init_stages, a_center[::-1]], axis=0)
@@ -120,77 +121,27 @@ def compute_kappa(Omega_c, sigma8):
                                           coords=c,
                                           z_source=z_source)
 
-    m = tf.reshape(m,
-                   [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix, -1])
-    return m, lensplanes, r_center, a_center
+    m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix])
 
-
-def desc_y1_analysis(kmap):
-    """
-  Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
-  """
-    ngal = 10  # gal/arcmin **2
-    pix_scale = FLAGS.field_size / FLAGS.field_npix * 60  # arcmin
-    ngal_per_pix = ngal * pix_scale**2  # galaxies per pixels
-    sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)  # Rescaled noise sigma
-    sigma_pix = 2. / pix_scale  # Smooth at 1 arcmin
-    # Add noise
-    kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
-    # Add smoothing
-    kmap = tfa.image.gaussian_filter2d(kmap, 51, sigma=sigma_pix)
-    return kmap
-
-
-def rebin(a, shape):
-    sh = shape, a.shape[0] // shape
-    return tf.math.reduce_mean(tf.reshape(a, sh), axis=-1)
-
-
-@tf.function
-def compute_jacobian(Omega_c, sigma8):
-    """ Function that actually computes the Jacobian of a given statistics
-    """
-    params = tf.stack([Omega_c, sigma8])
-    with tf.GradientTape() as tape:
-        tape.watch(params)
-        m, lensplanes, r_center, a_center = compute_kappa(params[0], params[1])
-
-        # Adds realism to convergence map
-        kmap = desc_y1_analysis(m)
-
-        # Compute power spectrum
-        ell, power_spectrum = DHOS.statistics.power_spectrum(
-            m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
-
-        # Keep only ell between 300 and 3000
-        ell = ell[2:46]
-        power_spectrum = power_spectrum[2:46]
-
-        # Further reducing the nnumber of points
-        ell = rebin(ell, 11)
-        power_spectrum = rebin(power_spectrum, 11)
-    jac = tape.jacobian(power_spectrum, params, experimental_use_pfor=False)
-
-    return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return  m, lensplanes, r_center, a_center
 
 
 def main(_):
-    # Query the jacobian
-    m, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
-        tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-        tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
-    # Saving results in requested filename
-    pickle.dump(
-        {
-            'a': a_center,
-            'lensplanes': lensplanes,
-            'r': r_center,
-            'map': m.numpy(),
-            'kmap': kmap.numpy(),
-            'ell': ell.numpy(),
-            'ps': ps.numpy(),
-            'jac_ps': jac_ps.numpy()
-        }, open(FLAGS.filename, "wb"))
+    for i in range(FLAGS.nmaps):
+        t = time.time()
+        # Query the jacobian
+        m,lensplanes, r_center, a_center = compute_kappa(
+            tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
+        # Saving results in requested filename
+        pickle.dump(
+            {
+                'a': a_center,
+                'lensplanes': lensplanes,
+                'r': r_center,
+                'map': m.numpy(),
+            }, open(FLAGS.filename + '_%d' % i, "wb"))
+        print("iter", i, "took", time.time() - t)
 
 
 if __name__ == "__main__":

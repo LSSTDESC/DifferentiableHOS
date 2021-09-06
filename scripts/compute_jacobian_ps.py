@@ -12,10 +12,10 @@ from flowpm.tfpower import linear_matter_power
 import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
-import time
 from flowpm import tfpm
+import time
 
-flags.DEFINE_string("filename", "jac_16_.pkl", "Output filename")
+flags.DEFINE_string("filename", "jac_1_20.pkl", "Output filename")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 64,
@@ -28,8 +28,8 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("init_nsteps", 4, "Number of steps before the lightcone")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
-flags.DEFINE_integer("batch_size", 1,
-                     "Number of simulations to run in parallel")
+flags.DEFINE_float("batch_size", 1, "Number of simulations to run in parallel")
+flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
 flags.DEFINE_integer("B", 1, "Scale resolution factor")
 
 FLAGS = flags.FLAGS
@@ -133,7 +133,7 @@ def desc_y1_analysis(kmap):
     pix_scale = FLAGS.field_size / FLAGS.field_npix * 60  # arcmin
     ngal_per_pix = ngal * pix_scale**2  # galaxies per pixels
     sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)  # Rescaled noise sigma
-    sigma_pix = 2. / pix_scale  # Smooth at 1 arcmin
+    sigma_pix = 2. / pix_scale  # Smooth at 2 arcmin
     # Add noise
     kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
     # Add smoothing
@@ -160,7 +160,7 @@ def compute_jacobian(Omega_c, sigma8):
 
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum(
-            m[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
+            kmap[0, :, :, -1], FLAGS.field_size, FLAGS.field_npix)
 
         # Keep only ell between 300 and 3000
         ell = ell[2:46]
@@ -169,28 +169,33 @@ def compute_jacobian(Omega_c, sigma8):
         # Further reducing the nnumber of points
         ell = rebin(ell, 11)
         power_spectrum = rebin(power_spectrum, 11)
+
     jac = tape.jacobian(power_spectrum, params, experimental_use_pfor=False)
 
     return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
 
 
 def main(_):
-    # Query the jacobian
-    m, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
-        tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-        tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
-    # Saving results in requested filename
-    pickle.dump(
-        {
-            'a': a_center,
-            'lensplanes': lensplanes,
-            'r': r_center,
-            'map': m.numpy(),
-            'kmap': kmap.numpy(),
-            'ell': ell.numpy(),
-            'ps': ps.numpy(),
-            'jac_ps': jac_ps.numpy()
-        }, open(FLAGS.filename, "wb"))
+    for i in range(FLAGS.nmaps):
+        t = time.time()
+        # Query the jacobian
+        m, kmap, lensplanes, r_center, a_center, jac, ell, ps = compute_jacobian(
+            tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
+        # Saving results in requested filename
+        t = time.time()
+        pickle.dump(
+            {
+                'a': a_center,
+                'lensplanes': lensplanes,
+                'r': r_center,
+                'map': m.numpy(),
+                'kmap': kmap.numpy(),
+                'jac': jac.numpy(),
+                'ps': ps.numpy(),
+                'ell': ell.numpy(),
+            }, open(FLAGS.filename + '_%d' % i, "wb"))
+        print("iter", i, "took", time.time() - t)
 
 
 if __name__ == "__main__":
