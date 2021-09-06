@@ -6,6 +6,7 @@
 #SBATCH -t 01:00:00
 #SBATCH --mail-user=denise.lanzieri@cea.fr
 
+conda deactivate
 module load python3/3.8-anaconda-2020.11
 
 cd /global/cscratch1/sd/dlan/maps_64

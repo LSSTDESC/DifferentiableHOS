@@ -67,9 +67,9 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
 
     # Step IV: compute loss
     if FLAGS.custom_weight:
-    weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
-  else:
-    weight = np.ones_like(k)
+        weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
+    else:
+        weight = np.ones_like(k)
   weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
   rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
   loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)

@@ -68,7 +68,7 @@ def compute_kappa(Omega_c, sigma8):
         [FLAGS.nc, FLAGS.nc, FLAGS.nc],
         [FLAGS.box_size, FLAGS.box_size, FLAGS.box_size],
         pk_fun,
-        batch_size=1)
+        batch_size=FLAGS.batch_size)
     initial_state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
     # Run the Nbody
