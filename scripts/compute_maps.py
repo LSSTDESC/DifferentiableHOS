@@ -27,7 +27,7 @@ flags.DEFINE_float("box_size", 205.,
                    "Transverse comoving size of the simulation volume")
 flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
-flags.DEFINE_float("batch_size", 1, "Number of simulations to run in parallel")
+flags.DEFINE_integer("batch_size", 1, "Number of simulations to run in parallel")
 flags.DEFINE_integer("nmaps", 10, "Number maps to generate.")
 
 FLAGS = flags.FLAGS
