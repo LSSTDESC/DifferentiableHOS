@@ -6,8 +6,15 @@ Created on Fri Feb 12 12:54:33 2021
 From lenspack implementation
 """
 import tensorflow as tf
+import numpy as np
 import tensorflow_probability as tfp
 
+
+def _kernel(bw, X, x):
+    """Gaussian kernel for KDE"""
+    return (1.0 / np.sqrt(2 * np.pi) / bw) * tf.math.exp(
+        -((X - x) ** 2) / (bw ** 2 * 2.0)
+    )
 
 @tf.function
 def find_peaks2d_tf(image,mask = None, ordered=True,threshold=None):
@@ -84,6 +91,7 @@ def peaks_histogram_tf(image, bins=None, mask=None):
         bins = tf.linspace(tf.math.reduce_min(image), tf.math.reduce_max(image), bins)
     else:
         bins = bins
+
     x, y, heights = find_peaks2d_tf(image, threshold=None, mask=mask)
     counts = tfp.stats.histogram(heights,bins)
     return counts,bins
