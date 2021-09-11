@@ -1,7 +1,7 @@
 """
 Created on Fri Feb 12 12:54:33 2021
 
-@author: Ben Horowitz
+@author: Ben Horowitz (and friends)
 
 From lenspack implementation
 """
@@ -64,9 +64,57 @@ def find_peaks2d_tf(image,mask = None, ordered=True,threshold=None):
         return tf.gather(XY[:,0],ind),tf.gather(XY[:,1],ind),tf.gather(heights,ind)
     return XY[:,0], XY[:,1],heights
 
+
 @tf.function
-def peaks_histogram_tf(image, bins=None, mask=None):
+def peaks_histogram_tf(image, bins=None, mask=None, bw_factor=2.):
     """Compute a histogram of peaks in a 2d image.
+
+    Parameters
+    ----------
+    image : tensor (2D)
+        Two-dimensional input tensor
+    bins : int or tensor (1D), optional
+        Specification of centers or the number of bins to use for the
+        histogram. If not provided, a default of 10 bins linearly spaced
+        between the image minimum and maximum (inclusive) is used.
+    mask : tensor (same shape as `image`), optional
+        Tensor identifying which pixels of `image` to consider/exclude
+        in finding peaks. Can either either be numeric (0 or 1) or boolean 
+        (false or true)
+    bw_factor: float
+        Factor by which to divide the bin width to define the bandwidth of the
+        smoothing kernel.
+    Returns
+    -------
+    counts, bins : tuple of 1D tensors
+        Histogram and bin boundary values. If the returned `counts` has 
+        N values, `bin_edges` will have N + 1 values.
+     """
+    if bins is None:
+        bins = tf.linspace(tf.math.reduce_min(image), tf.math.reduce_max(image), 10)
+    elif isinstance(bins, int):
+        bins = tf.linspace(tf.math.reduce_min(image), tf.math.reduce_max(image), bins)
+    else:
+        bins = bins
+
+    x, y, heights = find_peaks2d_tf(image, threshold=None, mask=mask)
+
+    # To avoid issues, we clip the image to within the peaks
+    heights = tf.clip_by_value(heights, bins[0], bins[-1])
+
+    w = tf.reshape(tf.ones_like(heights), [-1])
+    k = _kernel(tf.reduce_mean((bins[1:] -  bins[:-1]))/bw_factor, tf.reshape(heights,[-1,1]), bins)
+    k =  k / tf.reduce_sum(k, axis=1, keepdims=True) 
+    counts = tf.tensordot(k, w, axes = [[0], [0]]) 
+
+    return counts, bins
+
+@tf.function
+def non_diffable_peaks_histogram_tf(image, bins=None, mask=None):
+    """Compute a histogram of peaks in a 2d image.
+
+    CAREFULL: This implementation is not differentiable
+
     Parameters
     ----------
     image : tensor (2D)
@@ -93,5 +141,8 @@ def peaks_histogram_tf(image, bins=None, mask=None):
         bins = bins
 
     x, y, heights = find_peaks2d_tf(image, threshold=None, mask=mask)
+    # To avoid issues, we clip the image to within the peaks
+    heights = tf.clip_by_value(heights, bins[0], bins[-1])
+
     counts = tfp.stats.histogram(heights,bins)
     return counts,bins
