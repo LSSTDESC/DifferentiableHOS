@@ -20,6 +20,8 @@
 
 \newcommand{\placeholder}[1]{\textit{PLACEHOLDER: #1}}
 
+\newcommand{\EiffL}[1]{{\color{cyan}FL: #1}}
+
 
 % header settings
 \shorttitle{Differentiable Lensing Simulations}
@@ -188,7 +190,7 @@ Fig. shows that the PGD scheme allows to achieve higher accuracy at the same com
 
 \subsection{Wavelet Peak Counts}
 
-\FL{Explain wavelets}
+\EiffL{Explain wavelets}
 
 One of the difficulties with traditional peak counting is that it relies on building
 an histogram of peak intensities, and histograms, due to the discrete nature of the bins, are not differentiable. However, the underlying idea of peak counting is just to build an estimate of the density distribution of number of peaks as a function of their intensity. Histograms are one way to build such an estimate, and have been historically preferred, but for no particular reason. To circumvent the non-differentiability of histograms, we prefer here to estimate this density using an alternative method: Kernel Density Estimation (KDE). As a continuous equivalent to an histogram, KDEs are differentiables and can just as well be used to define the peak counts statistic.
@@ -197,10 +199,17 @@ an histogram of peak intensities, and histograms, due to the discrete nature of 
 
 \begin{figure}
     \centering
-    \includegraphics{figures/}
-    \caption{Caption}
-    \label{fig:my_label}
+    \includegraphics[width=\columnwidth]{figures/peakcounts.png}
+    \caption{Comparison of traditional histogram-based peak counts, against our  KDE-based peak counts statistic. The two statistics are similar, but our KDE-based statistics is differentiable.}
+    \label{fig:comp_statistics}
 \end{figure}
+
+
+\subsection{Wavelet $\ell_1$-norm}
+
+\EiffL{Explain what's the deal with this l1 norm}
+
+
 
 
 \section{Results}
