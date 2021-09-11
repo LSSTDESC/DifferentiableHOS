@@ -17,23 +17,22 @@ def _kernel(bw, X, x):
     )
 
 @tf.function
-def find_peaks2d_tf(image,mask = None, ordered=True,threshold=None):
+def find_peaks2d_tf(image, mask=None, ordered=True, threshold=None):
     if mask is not None:
-      #  mask = np.atleast_2d(mask)
+        #  mask = np.atleast_2d(mask)
         if mask.shape != image.shape:
             print("Warning: mask not compatible with image -> ignoring.")
             mask = tf.ones(image.shape)
         else:
             # Make sure mask is binary, i.e. turn nonzero values into ones
-            mask = tf.cast(tf.cast(mask,bool),float)
+            mask = tf.cast(tf.cast(mask, bool), float)
     else:
         mask = tf.ones(image.shape)
-        
+
     if threshold is None:
         threshold = tf.math.reduce_min(image)
     else:
-        threshold = tf.math.reduce_max((threshold,tf.math.reduce_min(image)))
-
+        threshold = tf.math.reduce_max((threshold, tf.math.reduce_min(image)))
 
     offset = tf.math.reduce_min(image)
     threshold = threshold - offset
@@ -53,16 +52,21 @@ def find_peaks2d_tf(image,mask = None, ordered=True,threshold=None):
 
     merge = ((map0 > map1) & (map0 > map2) & (map0 > map3) & (map0 > map4) &
              (map0 > map5) & (map0 > map6) & (map0 > map7) & (map0 > map8))
-    
-    bordered = tf.pad(merge,tf.constant(((1,1),(1,1))),constant_values=0.0)
-    peaksmap = tf.cast(bordered,float)*image*mask
+
+    bordered = tf.pad(merge,
+                      tf.constant(((1, 1), (1, 1))),
+                      constant_values=0.0)
+    peaksmap = tf.cast(bordered, float) * image * mask
     XY = tf.where(peaksmap > threshold)
-    heights = tf.gather_nd(image,XY) + offset
+    heights = tf.gather_nd(image, XY) + offset
 
     if ordered:
         ind = tf.argsort(heights)[::-1]
-        return tf.gather(XY[:,0],ind),tf.gather(XY[:,1],ind),tf.gather(heights,ind)
-    return XY[:,0], XY[:,1],heights
+        return tf.gather(XY[:, 0],
+                         ind), tf.gather(XY[:, 1],
+                                         ind), tf.gather(heights, ind)
+    return XY[:, 0], XY[:, 1], heights
+
 
 
 @tf.function
@@ -134,9 +138,11 @@ def non_diffable_peaks_histogram_tf(image, bins=None, mask=None):
         N values, `bin_edges` will have N + 1 values.
      """
     if bins is None:
-        bins = tf.linspace(tf.math.reduce_min(image), tf.math.reduce_max(image), 10)
+        bins = tf.linspace(tf.math.reduce_min(image),
+                           tf.math.reduce_max(image), 10)
     elif isinstance(bins, int):
-        bins = tf.linspace(tf.math.reduce_min(image), tf.math.reduce_max(image), bins)
+        bins = tf.linspace(tf.math.reduce_min(image),
+                           tf.math.reduce_max(image), bins)
     else:
         bins = bins
 
@@ -146,3 +152,4 @@ def non_diffable_peaks_histogram_tf(image, bins=None, mask=None):
 
     counts = tfp.stats.histogram(heights,bins)
     return counts,bins
+

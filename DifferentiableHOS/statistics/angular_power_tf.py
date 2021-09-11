@@ -10,7 +10,7 @@ import tensorflow as tf
 import numpy as np
 
 
-def measure_power_spectrum_tf(map_data,field,nc_xy):
+def measure_power_spectrum_tf(map_data, field, nc_xy):
     """
     Measures power spectrum or 2d data
 
@@ -29,7 +29,6 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
     ell: tf.TensorArray
     power spectrum: tf.TensorArray
     """
-
     def radial_profile_tf(data):
         """
         Compute the radial profile of 2d image
@@ -42,17 +41,17 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
         -------
         radial profile
         """
-        center = data.shape[0]/2
+        center = data.shape[0] / 2
         y, x = np.indices((data.shape))
         r = tf.math.sqrt((x - center)**2 + (y - center)**2)
-        r=tf.cast(r,dtype=tf.int32)
-        tbin=tf.math.bincount(tf.reshape(r,[-1]), tf.reshape(data,[-1]))
-        nr = tf.math.bincount(tf.reshape(r,[-1]))
-        radialprofile=tf.cast(tbin,dtype=tf.float32)/tf.cast(nr,dtype=tf.float32)
+        r = tf.cast(r, dtype=tf.int32)
+        tbin = tf.math.bincount(tf.reshape(r, [-1]), tf.reshape(data, [-1]))
+        nr = tf.math.bincount(tf.reshape(r, [-1]))
+        radialprofile = tf.cast(tbin, dtype=tf.float32) / tf.cast(
+            nr, dtype=tf.float32)
         return radialprofile
 
-
-    def resolution(field,nc_xy):
+    def resolution(field, nc_xy):
         """
         pixel resolution
 
@@ -62,9 +61,9 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
          pixel resolution
 
         """
-        return  field*60/nc_xy
+        return field * 60 / nc_xy
 
-    def pixel_size_tf(field,nc_xy):
+    def pixel_size_tf(field, nc_xy):
         """
         pixel size
 
@@ -84,12 +83,16 @@ def measure_power_spectrum_tf(map_data,field,nc_xy):
             pixel_size =  =pi * resolution / 180. / 60. #rad/pixel
 
         """
-        return field/nc_xy / 180 *np.pi
+        return field / nc_xy / 180 * np.pi
+
     map_data = tf.cast(map_data, dtype=tf.complex64)
     data_ft = tf.signal.fftshift(tf.signal.fft2d(map_data)) / map_data.shape[0]
-    nyquist = tf.cast(map_data.shape[0]/2,dtype=tf.int32)
-    power_spectrum = radial_profile_tf(tf.math.real(data_ft*tf.math.conj(data_ft)))[:nyquist]
-    power_spectrum = power_spectrum*pixel_size_tf(field,nc_xy)**2
-    k = tf.range(power_spectrum.shape[0],dtype=tf.float32)
-    ell = 2. * tf.constant(np.pi,dtype=tf.float32) * k / tf.constant(pixel_size_tf(field,nc_xy),dtype=tf.float32) / tf.cast(map_data.shape[0],dtype=tf.float32)
+    nyquist = tf.cast(map_data.shape[0] / 2, dtype=tf.int32)
+    power_spectrum = radial_profile_tf(
+        tf.math.real(data_ft * tf.math.conj(data_ft)))[:nyquist]
+    power_spectrum = power_spectrum * pixel_size_tf(field, nc_xy)**2
+    k = tf.range(power_spectrum.shape[0], dtype=tf.float32)
+    ell = 2. * tf.constant(np.pi, dtype=tf.float32) * k / tf.constant(
+        pixel_size_tf(field, nc_xy), dtype=tf.float32) / tf.cast(
+            map_data.shape[0], dtype=tf.float32)
     return ell, power_spectrum
