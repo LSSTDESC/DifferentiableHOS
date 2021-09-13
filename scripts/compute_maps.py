@@ -141,6 +141,23 @@ def compute_kappa(Omega_c, sigma8, pgdparams):
     return m, lensplanes, r_center, a_center
 
 
+def desc_y1_analysis(kmap):
+    """
+  Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
+  """
+    ngal = 10  # gal/arcmin **2
+    pix_scale = FLAGS.field_size / FLAGS.field_npix * 60  # arcmin
+    ngal_per_pix = ngal * pix_scale**2  # galaxies per pixels
+    sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)  # Rescaled noise sigma
+    sigma_pix = 1. / pix_scale  # Smooth at 1 arcmin
+    # Add noise
+    kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
+    # Add smoothing
+    kmap = fourier_smoothing(kmap,
+                             sigma=sigma_pix,
+                             resolution=FLAGS.field_npix)
+    return kmap
+
 def main(_):
 
     # Loading PGD parameters
@@ -151,13 +168,14 @@ def main(_):
     for i in range(FLAGS.nmaps):
         t = time.time()
 
-        kmap, lensplanes, r_center, a_center = compute_kappa(
+        m, lensplanes, r_center, a_center = compute_kappa(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32), pgdparams)
-
+        kmap = desc_y1_analysis(m)
         # Saving results in requested filename
         pickle.dump({
             'kmap': kmap.numpy(),
+            'm': m.numpy(),
         }, open(FLAGS.filename + '_%d' % i, "wb"))
         print("iter", i, "took", time.time() - t)
 
