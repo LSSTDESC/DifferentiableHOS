@@ -20,6 +20,8 @@
 
 \newcommand{\placeholder}[1]{\textit{PLACEHOLDER: #1}}
 
+\newcommand{\EiffL}[1]{{\color{cyan}FL: #1}}
+
 
 % header settings
 \shorttitle{Differentiable Lensing Simulations}
@@ -144,7 +146,68 @@ To perform the lightcone computation and extract the lens planes,  we export sev
 After creating a grid of coordinates, the lens planes are interpolated onto sky coordinates. 
  At this point, we have constructed a ray tracer object, to compute the convergence, we directly integrate the lensing density along the unperturbed line of sight. 
 
+    
+\section{Additional validation for our ray-tracing implementation } 
+As an additional test to validate our ray-tracing, instead of running the N-body simulation to generate the snapshots of particles for different scale factors, we create these snapshots by using a linear matter power spectrum at a given fixed redshift $z=0.52$ . \\
+Specifically, we estimate the initial LPT displacement given an input linear (real) field.
 
+As we said, the aim of this test is to prove the validity of our ray-tracing. In principle, without the N-body simulations and his possible approximations and systematics, any disagreement between the angular power spectrum computed from the final convergence map
+and the angular power spectrum we use as reference can be attributable to the ray-tracing.
+
+Fig. shows a comparison between the theoretical linear matter power spectrum computed using the Jax-cosmo library at the redshift $0.52$ and the matter power spectrum computed from the resulting snapshots, after applying the painting operations. As we can see the matter power spectrum start to lack in power for $k$(maggiore o circa uguale)1. This is probably due to the paint operation and is something to take into account when we will study the final power spectrum.
+
+Then, we exported the lens planes, created the Convergence map and computed the angular power spectrum from it. The final angular power spectrum is obtained averaging over 20 samples.
+We also tried to investigate the behaviour of the angular power spectrum for large scale for different values of the field and Box size.
+
+\section{Potential Gradient Descendent (PGD)}    
+Fast N-body simulations can be used as viable alternative to full N-body to model the galaxy statistics and create fast and low computational costs realizations of the large scale structure. Nevertheless, this kind of simulations lack resolution on small scale and can't give accurate halo matter profiles or matter power spectrum. 
+
+
+To recover this missing accuracy, we employs the PGD scheme (\citet{Dai_2018}). 
+The main goal is to mimic the physics lost in the low resolution simulations by computing the short range force operation as an additional correction displacements in a post-processing step. \\
+The additional displacement is computed by pointing the particles towards a filtered potential minimum of the particle mesh solver:
+\begin{equation}
+    \textbf{S}=4\pi G \bar{\rho}\alpha_{PM}/H_0^2 \nabla(
+   \hat{\textbf{O}}_l(k)
+     \hat{\textbf{O}}_s(k)
+    \nabla^{-2}\delta),
+\end{equation}
+where $\hat{\textbf{O}}_l(k)= \exp{(\frac{k^2}{k^4_l})}$ and $\hat{\textbf{O}}_s(k)= \exp{(-\frac{k^4}{k^4_s}})$ are the low and high pass filter introduced to remove the long range force and to reduce the numerical effect induced by the mesh resolution. \\
+As we can see, PGD introduces control parameters ($k_s$,$k_l$,$\alpha$) that can be tuned comparing high and low resolution simulations.
+Specifically, $\alpha$ is scale factor dependent according the following relation: $\alpha=\alpha_0a^{\mu}$, where $\alpha_0$ and $\mu$ are two free parameters that can be varied to match the power spectrum against the higher resolution N-body simulations.
+
+We see from the Figure that, at fixed $k_l,k_s,\mu$, increasing $\alpha_0$ the power spectrum increases at small scale. For $\alpha_0$ between 0.008 and 0.01 the power spectrum reaches the maximum power. For lower values the power spectrum starts to decrease at small scale. 
+
+Fig. shows that the PGD scheme allows to achieve higher accuracy at the same computational cost. We compare the low resolution DLL matter power spectra (128 particles, 128 $Mpc/h$, $B=2$) complemented by the PGD scheme to a conventional DLL simulation with the same resolution. Both the outputs are computed using $\alpha_0=0.01$ and showed for different redshift. 
+
+
+
+
+\section{Summary statistics}
+
+\subsection{Lensing Angular Power Spectrum}
+
+
+\subsection{Wavelet Peak Counts}
+
+\EiffL{Explain wavelets}
+
+One of the difficulties with traditional peak counting is that it relies on building
+an histogram of peak intensities, and histograms, due to the discrete nature of the bins, are not differentiable. However, the underlying idea of peak counting is just to build an estimate of the density distribution of number of peaks as a function of their intensity. Histograms are one way to build such an estimate, and have been historically preferred, but for no particular reason. To circumvent the non-differentiability of histograms, we prefer here to estimate this density using an alternative method: Kernel Density Estimation (KDE). As a continuous equivalent to an histogram, KDEs are differentiables and can just as well be used to define the peak counts statistic.
+
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{figures/peakcounts.png}
+    \caption{Comparison of traditional histogram-based peak counts, against our  KDE-based peak counts statistic. The two statistics are similar, but our KDE-based statistics is differentiable.}
+    \label{fig:comp_statistics}
+\end{figure}
+
+
+\subsection{Wavelet $\ell_1$-norm}
+
+\EiffL{Explain what's the deal with this l1 norm}
 
 
 
