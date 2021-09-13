@@ -9,6 +9,6 @@
 conda deactivate
 module load python3/3.8-anaconda-2020.11
 
-cd /global/cscratch1/sd/dlan/maps_64
+cd /global/cscratch1/sd/dlan/maps/
 
 python /global/homes/d/dlan/DifferentiableHOS/scripts/compute_maps.py  --filename=res_maps_$SLURM_ARRAY_TASK_ID

@@ -27,12 +27,13 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_float("a_init", 0.1, "Initial scale factor")
 flags.DEFINE_integer("init_nsteps", 4, "Number of steps before the lightcone")
 flags.DEFINE_integer("n_lens", 36, "Number of lensplanes in the lightcone")
-flags.DEFIN_integer("batch_size", 1, "Number of simulations to run in parallel")
+flags.DEFIN_integer("batch_size", 1,
+                    "Number of simulations to run in parallel")
 flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
 flags.DEFINE_integer("B", 1, "Scale resolution factor")
 
-
 FLAGS = flags.FLAGS
+
 
 @tf.function
 def compute_kappa(Omega_c, sigma8):
@@ -66,10 +67,10 @@ def compute_kappa(Omega_c, sigma8):
         [FLAGS.nc, FLAGS.nc, FLAGS.nc],
         [FLAGS.box_size, FLAGS.box_size, FLAGS.box_size],
         pk_fun,
-        batch_size=FLAGS.batch_size))
+        batch_size=FLAGS.batch_size)
     initial_state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
-        # Run the Nbody
+    # Run the Nbody
     states = flowpm.nbody(cosmology,
                           initial_state,
                           stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
@@ -119,7 +120,8 @@ def compute_kappa(Omega_c, sigma8):
                                           coords=c,
                                           z_source=z_source)
 
-    m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix,-1])
+    m = tf.reshape(m,
+                   [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix, -1])
 
     return m, lensplanes, r_center, a_center
 

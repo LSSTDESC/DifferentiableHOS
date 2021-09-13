@@ -14,9 +14,11 @@ from itertools import cycle
 import tensorflow_addons as tfa
 import time
 from flowpm import tfpm
+from scipy.stats import norm
 
 flags.DEFINE_string("filename", "results_maps.pkl", "Output filename")
-flags.DEFINE_string("pgd_params", "results_fit_PGD.pkl", "PGD parameter files")
+flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
+                    "PGD parameter files")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 128,
@@ -32,6 +34,31 @@ flags.DEFINE_integer("batch_size", 1,
 flags.DEFINE_integer("nmaps", 10, "Number maps to generate.")
 
 FLAGS = flags.FLAGS
+
+
+def make_power_map(power_spectrum, size, kps=None):
+    #Ok we need to make a map of the power spectrum in Fourier space
+    k1 = np.fft.fftfreq(size)
+    k2 = np.fft.fftfreq(size)
+    kcoords = np.meshgrid(k1, k2)
+    # Now we can compute the k vector
+    k = np.sqrt(kcoords[0]**2 + kcoords[1]**2)
+    if kps is None:
+        kps = np.linspace(0, 0.5, len(power_spectrum))
+    # And we can interpolate the PS at these positions
+    ps_map = np.interp(k.flatten(), kps, power_spectrum).reshape([size, size])
+    ps_map = ps_map
+    return ps_map
+
+
+def fourier_smoothing(kappa, sigma, resolution):
+    im = tf.signal.fft2d(tf.cast(kappa, tf.complex64))
+    kps = np.linspace(0, 0.5, resolution)
+    filter = norm(0, 1. / (2. * np.pi * sigma)).pdf(kps)
+    m = make_power_map(filter, resolution, kps=kps)
+    m /= m[0, 0]
+    im = tf.cast(tf.reshape(m, [1, resolution, resolution]), tf.complex64) * im
+    return tf.cast(tf.signal.ifft2d(im), tf.float32)
 
 
 @tf.function
