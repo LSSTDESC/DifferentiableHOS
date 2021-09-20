@@ -175,11 +175,11 @@ def compute_jacobian(Omega_c, sigma8, pgdparams):
             params[0], params[1], pgdparams)
 
         # Adds realism to convergence map
-        kmap = desc_y1_analysis(m)
+        #kmap = desc_y1_analysis(m)
 
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum(
-            kmap[0], FLAGS.field_size, FLAGS.field_npix)
+            m[0], FLAGS.field_size, FLAGS.field_npix)
 
         # Keep only ell between 300 and 3000
         ell = ell[2:46]
@@ -194,7 +194,7 @@ def compute_jacobian(Omega_c, sigma8, pgdparams):
                         experimental_use_pfor=False,
                         parallel_iterations=1)
 
-    return m, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return m, lensplanes, r_center, a_center, jac, ell, power_spectrum
 
 
 def main(_):
@@ -204,7 +204,7 @@ def main(_):
     for i in range(FLAGS.nmaps):
         t = time.time()
         # Query the jacobian
-        m, kmap, lensplanes, r_center, a_center, jac, ell, ps = compute_jacobian(
+        m, lensplanes, r_center, a_center, jac, ell, ps = compute_jacobian(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32), pgdparams)
         # Saving results in requested filename
@@ -215,7 +215,7 @@ def main(_):
                 'lensplanes': lensplanes,
                 'r': r_center,
                 'map': m.numpy(),
-                'kmap': kmap.numpy(),
+               # 'kmap': kmap.numpy(),
                 'jac_ps': jac.numpy(),
                 'ps': ps.numpy(),
                 'ell': ell.numpy(),

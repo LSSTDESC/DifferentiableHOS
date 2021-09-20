@@ -12,9 +12,9 @@ from flowpm.tfpower import linear_matter_power
 import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
+from flowpm import tfpm
 import time
 from scipy.stats import norm
-
 
 flags.DEFINE_string("filename", "jac_1_20.pkl", "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
@@ -32,8 +32,8 @@ flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
 flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
-
 FLAGS = flags.FLAGS
+
 
 def make_power_map(power_spectrum, size, kps=None):
     #Ok we need to make a map of the power spectrum in Fourier space
@@ -82,7 +82,7 @@ def compute_kappa(Omega_c, sigma8, pgdparams):
     stages = tf.concat([init_stages, a_center[::-1]], axis=0)
 
     # Create some initial conditions
-    k = tf.constant(np.logspace(-4, 1, 512), dtype=tf.float32)
+    k = tf.constant(np.logspace(-4, 1, 128), dtype=tf.float32)
     pk = linear_matter_power(cosmology, k)
     pk_fun = lambda x: tf.cast(
         tf.reshape(
@@ -95,7 +95,7 @@ def compute_kappa(Omega_c, sigma8, pgdparams):
         batch_size=FLAGS.batch_size)
     initial_state = flowpm.lpt_init(cosmology, initial_conditions, 0.1)
 
-     # Run the Nbody
+    # Run the Nbody
     states = flowpm.nbody(cosmology,
                           initial_state,
                           stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
@@ -152,7 +152,7 @@ def desc_y1_analysis(kmap):
     # Add noise
     kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
     # Add smoothing
-     kmap = fourier_smoothing(kmap,
+    kmap = fourier_smoothing(kmap,
                              sigma=sigma_pix,
                              resolution=FLAGS.field_npix)
     return kmap
@@ -170,33 +170,34 @@ def compute_jacobian(Omega_c, sigma8, pgdparams):
     params = tf.stack([Omega_c, sigma8])
     with tf.GradientTape() as tape:
         tape.watch(params)
-        m, lensplanes, r_center, a_center = compute_kappa(params[0], params[1])
+        m, lensplanes, r_center, a_center = compute_kappa(
+            params[0], params[1], pgdparams)
 
         # Adds realism to convergence map
         kmap = desc_y1_analysis(m)
+ 
+        # Compute the peak counts
+        counts,bins=DHOS.statistics.peaks_histogram_tf(kmap[0],tf.linspace(-0.029,0.09,8))
+    jac = tape.jacobian(counts,
+                        params,
+                        experimental_use_pfor=False,
+                        parallel_iterations=1)
 
-        # Compute l1norm
-        l1 = DHOS.statistics.l1norm(kmap[0],
-                                    nscales=7,
-                                    nbins=16,
-                                    value_range=[-0.05, 0.05])[1][0]
-
-    jac = tape.jacobian(l1, params, experimental_use_pfor=False,parallel_iterations=1)
-
-    return m, kmap, lensplanes, r_center, a_center, jac, l1
+    return m, kmap, lensplanes, r_center, a_center, jac, counts, bins
 
 
 def main(_):
+    t = time.time()
     with open(FLAGS.pgd_params, "rb") as f:
         pgd_data = pickle.load(f)
         pgdparams = pgd_data['params']
     for i in range(FLAGS.nmaps):
-        t = time.time()
         # Query the jacobian
-        m, kmap, lensplanes, r_center, a_center, jac, l1 = compute_jacobian(
+        m, kmap, lensplanes, r_center, a_center, jac_pc, counts, bins= compute_jacobian(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32))
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32), pgdparams)
         # Saving results in requested filename
+        t = time.time()
         pickle.dump(
             {
                 'a': a_center,
@@ -204,10 +205,13 @@ def main(_):
                 'r': r_center,
                 'map': m.numpy(),
                 'kmap': kmap.numpy(),
-                'jac': jac.numpy(),
-                'l1': l1.numpy()
-            }, open(FLAGS.filename + '_%d' % i, "wb"))
+                'jac_pc': jac_pc.numpy(),
+                'counts': counts.numpy(),
+                'bin': bins.numpy(),
+            },
+            open(FLAGS.filename + '_%d' % i, "wb"))
         print("iter", i, "took", time.time() - t)
+
 
 
 if __name__ == "__main__":
