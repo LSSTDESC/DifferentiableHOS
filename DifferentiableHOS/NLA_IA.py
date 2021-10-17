@@ -119,7 +119,7 @@ def tidal_field(plane_source, resolution, sigma):
     return tidal_planes
 
 
-def interpolation(tidal_planes, dx, r_center, tidial_field_npix, coords):
+def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
     r""" Compute the interpolation of the projected tidal shear of the source plane on the light-cones
    Parameters
    ----------
@@ -144,22 +144,22 @@ def interpolation(tidal_planes, dx, r_center, tidial_field_npix, coords):
         Interpolated projected tidal shear of the source plane on the light-cones
     """
     coords = tf.convert_to_tensor(coords, dtype=tf.float32)
-    for r in (r_center):
-        c = coords * r / dx
+    #for r in (r_center):
+    c = coords * r_source / dx
 
-        # Applying periodic conditions on lensplane
-        shape = tf.shape(tidal_planes)
-        c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
+    # Applying periodic conditions on lensplane
+    shape = tf.shape(tidal_planes)
+    c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
 
-        # Shifting pixel center convention
-        c = tf.expand_dims(c, axis=0) - 0.5
+    # Shifting pixel center convention
+    c = tf.expand_dims(c, axis=0) - 0.5
 
-        im = tfa.image.interpolate_bilinear(tf.expand_dims(tidal_planes, -1),
-                                            c,
-                                            indexing='xy')
-        imx, imy, imxy = im
-        imx = tf.reshape(imx, [tidial_field_npix, tidial_field_npix])
-        imy = tf.reshape(imy, [tidial_field_npix, tidial_field_npix])
-        imxy = tf.reshape(imxy, [tidial_field_npix, tidial_field_npix])
-        im = tf.stack([imx, imy, imxy], axis=0)
+    im = tfa.image.interpolate_bilinear(tf.expand_dims(tidal_planes, -1),
+                                        c,
+                                        indexing='xy')
+    imx, imy, imxy = im
+    imx = tf.reshape(imx, [tidial_field_npix, tidial_field_npix])
+    imy = tf.reshape(imy, [tidial_field_npix, tidial_field_npix])
+    imxy = tf.reshape(imxy, [tidial_field_npix, tidial_field_npix])
+    im = tf.stack([imx, imy, imxy], axis=0)
     return im
