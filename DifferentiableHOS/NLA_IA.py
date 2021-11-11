@@ -18,7 +18,7 @@ def Epsilon1(cosmology, z_source, tidal_field, Aia, C1):
     z_source: 1-D `Tensor`
         Source redshifts with shape [Nz].
      
-    tidal_field:  Tensor of shape ([3, 2048, 2048]),
+    tidal_field:  Tensor of shape ([3, tidial_field_npix, tidial_field_npix]),
         Interpolated projected tidal shear of the source plane 
         
     Aia: Float.
@@ -32,7 +32,8 @@ def Epsilon1(cosmology, z_source, tidal_field, Aia, C1):
     e1: 2-D Tensor.
         Real component of the intrinsic ellipticities.
   """
-    e1 = -Aia * C1 * Omega_m_a(cosmology, z_source) * constants.rhocrit * (
+    Omega_m=cosmology.Omega_c+cosmology.Omega_b
+    e1 = -Aia * C1 * Omega_m * constants.rhocrit * (
         tidal_field[0] - tidal_field[1]) / D1(cosmology, z_source)
     return e1
 
@@ -48,7 +49,7 @@ def Epsilon2(cosmology, z_source, tidal_field, Aia, C1):
     z_source: 1-D `Tensor`
         Source redshifts with shape [Nz].
      
-    tidal_field:  Tensor of shape ([3, 2048, 2048]),
+    tidal_field:  Tensor of shape ([3, tidial_field_npix, tidial_field_npix]),
         Interpolated projected tidal shear of the source plane 
         
     Aia: Float.
@@ -62,7 +63,8 @@ def Epsilon2(cosmology, z_source, tidal_field, Aia, C1):
     e2: 2-D Tensor.
         Imaginary component of the intrinsic ellipticities.
   """
-    e2 = -2 * Aia * C1 * Omega_m_a(cosmology, z_source) * constants.rhocrit * (
+    Omega_m=cosmology.Omega_c+cosmology.Omega_b
+    e2 = -2 * Aia * C1 * Omega_m * constants.rhocrit*  (
         tidal_field[2]) / D1(cosmology, z_source)
     return e2
 
@@ -123,14 +125,14 @@ def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
     r""" Compute the interpolation of the projected tidal shear of the source plane on the light-cones
    Parameters
    ----------
-    tidal_planes: Tensor of shape [3, 2048, 2048] (sx, sy, sz).
+    tidal_planes: Tensor of shape [3, resolution, resolution] (corrisponding to (sx, sy, sz)).
         Projected tidal shear of the source plane
     
     dx: float 
         transverse pixel resolution of the tidal planes [Mpc/h]
 
     r_center: tf.Tensor 
-        Center of the lensplanes used to build the lightcone[Mpc/h]
+        Center of the Sourceplane [Mpc/h]
     
     tidial_field_npix: Int
         Resolution of the final interpolated projected tidal shear map
@@ -140,14 +142,13 @@ def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
 
     Returns
     -------
-    im= Tensor of shape [3, 2048, 2048].
+    im= Tensor of shape [3, tidial_field_npix, tidial_field_npix].
         Interpolated projected tidal shear of the source plane on the light-cones
     """
     coords = tf.convert_to_tensor(coords, dtype=tf.float32)
-    #for r in (r_center):
     c = coords * r_source / dx
 
-    # Applying periodic conditions on lensplane
+    # Applying periodic conditions on sourceplane
     shape = tf.shape(tidal_planes)
     c = tf.math.mod(c, tf.cast(shape[1], tf.float32))
 
@@ -157,7 +158,7 @@ def interpolation(tidal_planes, dx, r_source, tidial_field_npix, coords):
     im = tfa.image.interpolate_bilinear(tf.expand_dims(tidal_planes, -1),
                                         c,
                                         indexing='xy')
-    imx, imy, imxy = im
+    imx, imy, imxy = tf.split(im,3)
     imx = tf.reshape(imx, [tidial_field_npix, tidial_field_npix])
     imy = tf.reshape(imy, [tidial_field_npix, tidial_field_npix])
     imxy = tf.reshape(imxy, [tidial_field_npix, tidial_field_npix])

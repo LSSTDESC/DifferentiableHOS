@@ -158,6 +158,7 @@ def desc_y1_analysis(kmap):
                              resolution=FLAGS.field_npix)
     return kmap
 
+
 def main(_):
 
     # Loading PGD parameters

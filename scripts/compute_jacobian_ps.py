@@ -20,7 +20,11 @@ flags.DEFINE_string("filename", "jac_1_20.pkl", "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
                     "PGD parameter files")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
+flags.DEFINE_float("Omega_b", 0.04860, "Fiducial baryonic matter fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
+flags.DEFINE_float("n_s", 0.9667, "Fiducial n_s value")
+flags.DEFINE_float("h", 0.6774, "Fiducial Hubble constant value")
+flags.DEFINE_float("w0", -1.0, "Fiducial w0 value")
 flags.DEFINE_integer("nc", 128,
                      "Number of transverse voxels in the simulation volume")
 flags.DEFINE_integer("field_npix", 1024,
@@ -62,12 +66,17 @@ def fourier_smoothing(kappa, sigma, resolution):
 
 
 @tf.function
-def compute_kappa(Omega_c, sigma8, pgdparams):
+def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
     # Instantiates a cosmology with desired parameters
-    cosmology = flowpm.cosmology.Planck15(Omega_c=Omega_c, sigma8=sigma8)
+    cosmology = flowpm.cosmology.Planck15(Omega_c=Omega_c,
+                                          sigma8=sigma8,
+                                          Omega_b=Omega_b,
+                                          n_s=n_s,
+                                          h=h,
+                                          w0=w0)
 
     # Schedule the center of the lensplanes we want for ray tracing
     r = tf.linspace(0., FLAGS.box_size * FLAGS.n_lens, FLAGS.n_lens + 1)
@@ -165,21 +174,22 @@ def rebin(a, shape):
 
 
 @tf.function
-def compute_jacobian(Omega_c, sigma8, pgdparams):
+def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
     """ Function that actually computes the Jacobian of a given statistics
     """
-    params = tf.stack([Omega_c, sigma8])
+    params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0])
     with tf.GradientTape() as tape:
         tape.watch(params)
         m, lensplanes, r_center, a_center = compute_kappa(
-            params[0], params[1], pgdparams)
+            params[0], params[1], params[2], params[3], params[4], params[5],
+            pgdparams)
 
         # Adds realism to convergence map
-        #kmap = desc_y1_analysis(m)
+        kmap = desc_y1_analysis(m)
 
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum(
-            m[0], FLAGS.field_size, FLAGS.field_npix)
+            kmap[0], FLAGS.field_size, FLAGS.field_npix)
 
         # Keep only ell between 300 and 3000
         ell = ell[2:46]
@@ -206,7 +216,11 @@ def main(_):
         # Query the jacobian
         m, lensplanes, r_center, a_center, jac, ell, ps = compute_jacobian(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32), pgdparams)
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.Omega_b, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.n_s, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.h, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.w0, dtype=tf.float32), pgdparams)
         # Saving results in requested filename
         t = time.time()
         pickle.dump(
@@ -215,7 +229,7 @@ def main(_):
                 'lensplanes': lensplanes,
                 'r': r_center,
                 'map': m.numpy(),
-               # 'kmap': kmap.numpy(),
+                # 'kmap': kmap.numpy(),
                 'jac_ps': jac.numpy(),
                 'ps': ps.numpy(),
                 'ell': ell.numpy(),
