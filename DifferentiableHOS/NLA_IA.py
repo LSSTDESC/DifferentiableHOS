@@ -7,7 +7,7 @@ import flowpm
 from DifferentiableHOS.fourier_smoothing import fourier_smoothing
 
 
-def Epsilon1(cosmology, z_source, tidal_field, Aia, C1):
+def Epsilon1(cosmology, a_source, tidal_field, Aia):
     r""" Compute the real component of the intrinsic ellipticities
 
   Parameters
@@ -15,8 +15,8 @@ def Epsilon1(cosmology, z_source, tidal_field, Aia, C1):
     cosmology: `Cosmology`,
         cosmology object.
         
-    z_source: 1-D `Tensor`
-        Source redshifts with shape [Nz].
+    a_source : 1-D tf.TensorArray
+        Source scale factor    
      
     tidal_field:  Tensor of shape ([3, tidial_field_npix, tidial_field_npix]),
         Interpolated projected tidal shear of the source plane 
@@ -24,21 +24,20 @@ def Epsilon1(cosmology, z_source, tidal_field, Aia, C1):
     Aia: Float.
         Amplitude parameter AI, describes the  strength of the tidal coupling. 
     
-    C1:  Float. 
-        Constant parameter (Calibrated in Brown et al. (2002))
     
   Returns
   -------
     e1: 2-D Tensor.
         Real component of the intrinsic ellipticities.
   """
+ 
     Omega_m=cosmology.Omega_c+cosmology.Omega_b
-    e1 = -Aia * C1 * Omega_m * constants.rhocrit * (
-        tidal_field[0] - tidal_field[1]) / D1(cosmology, z_source)
+    e1 = -Aia * constants.C_1 * Omega_m * constants.rhocrit * (
+        tidal_field[0] - tidal_field[1]) / D1(cosmology, a_source)
     return e1
 
 
-def Epsilon2(cosmology, z_source, tidal_field, Aia, C1):
+def Epsilon2(cosmology, a_source, tidal_field, Aia):
     r""" Compute the imaginary component of the intrinsic ellipticities
 
   Parameters
@@ -46,17 +45,15 @@ def Epsilon2(cosmology, z_source, tidal_field, Aia, C1):
     cosmology: `Cosmology`,
         cosmology object.
         
-    z_source: 1-D `Tensor`
-        Source redshifts with shape [Nz].
-     
+    a_source : 1-D tf.TensorArray
+        Source scale factor
+        
     tidal_field:  Tensor of shape ([3, tidial_field_npix, tidial_field_npix]),
         Interpolated projected tidal shear of the source plane 
         
     Aia: Float.
         Amplitude parameter AI, describes the  strength of the tidal coupling. 
-    
-    C1:  Float. 
-        Constant parameter (Calibrated in Brown et al. (2002))
+
     
   Returns
   -------
@@ -64,8 +61,8 @@ def Epsilon2(cosmology, z_source, tidal_field, Aia, C1):
         Imaginary component of the intrinsic ellipticities.
   """
     Omega_m=cosmology.Omega_c+cosmology.Omega_b
-    e2 = -2 * Aia * C1 * Omega_m * constants.rhocrit*  (
-        tidal_field[2]) / D1(cosmology, z_source)
+    e2 = -2 * Aia * constants.C_1 * Omega_m * constants.rhocrit*  (
+        tidal_field[2]) / D1(cosmology, a_source)
     return e2
 
 
@@ -102,6 +99,7 @@ def tidal_field(plane_source, resolution, sigma):
 
   """
 
+    
     k = np.fft.fftfreq(resolution)
     kx, ky = np.meshgrid(k, k)
     k2 = kx**2 + ky**2
@@ -110,7 +108,7 @@ def tidal_field(plane_source, resolution, sigma):
     sxx[0, 0] = 0.
     syy = 2 * np.pi * (ky * ky / k2 - 1. / 3)
     syy[0, 0] = 0.
-    sxy = 2 * np.pi * (kx * ky / k2 - 1. / 3)
+    sxy = 2 * np.pi * (kx * ky / k2 )
     sxy[0, 0] = 0.
     ss = tf.stack([sxx, syy, sxy], axis=0)
     ss = tf.cast(ss, dtype=tf.complex64)
