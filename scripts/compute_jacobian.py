@@ -16,9 +16,8 @@ import time
 from flowpm import tfpm
 import tensorflow_probability as tfp
 from scipy.stats import norm
-from DifferentiableHOS.ks_tf import ks93_tf
-from DifferentiableHOS.NLA_IA import Epsilon2, Epsilon1, tidal_field, interpolation
-from DifferentiableHOS.fourier_smoothing import fourier_smoothing
+from flowpm.NLA_IA import interpolation,k_IA
+from flowpm.fourier_smoothing import fourier_smoothing
 from flowpm.tfbackground import rad_comoving_distance
 
 flags.DEFINE_string("filename", "jac_ps__halo.pkl", "Output filename")
@@ -43,16 +42,10 @@ flags.DEFINE_integer("batch_size", 1,
 flags.DEFINE_float(
     "Aia", 1.,
     "The amplitude parameter A describes the strength of the tidal coupling")
-flags.DEFINE_float("C1", 5e-14, "Constant calibrated in Brown et al. (2002)")
 flags.DEFINE_float(
     "sigma_k", 0.1,
     "Value of the sigma in two-dimensional smoothing kernel used to compute the projected tidal shear"
 )
-flags.DEFINE_integer(
-    "tidial_field_npix", 1024,
-    "Pixel resolution of the final interpolated projected tidal shear map")
-flags.DEFINE_integer("tidial_plane_resolution", 2048,
-                     "Pixel resolution of the source plane ")
 
 FLAGS = flags.FLAGS
 
@@ -167,41 +160,39 @@ def add_IA(states, Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
                                           n_s=n_s,
                                           h=h,
                                           w0=w0)
-    z_source = tf.constant([[0.9720714]])
-    r_source = rad_comoving_distance(cosmology, 1 / (1 + z_source))
-    lens_source = states[::-1][11][1]
+    
+    lens_source=states[::-1][11][1]
+    lens_source_a=states[::-1][11][0]  
+    z_source=1/lens_source_a-1
+    r_source=rad_comoving_distance(cosmology,lens_source_a)
     plane_source = flowpm.raytracing.density_plane(
         lens_source,
         [FLAGS.nc, FLAGS.nc, FLAGS.nc],
         FLAGS.nc // 2,
         width=FLAGS.nc,
-        plane_resolution=FLAGS.tidial_plane_resolution,
+        plane_resolution=2048,
     )
-    pix_scale_source = FLAGS.box_size / FLAGS.tidial_field_npix  #Mpc
+    pix_scale_source =FLAGS.box_size/2048  #Mpc
     sigma_pix_source = FLAGS.sigma_k / pix_scale_source
-    tidal_planes = tidal_field(plane_source, FLAGS.tidial_plane_resolution,
-                               sigma_pix_source)
     xgrid, ygrid = np.meshgrid(
         np.linspace(0,
                     FLAGS.field_size,
-                    FLAGS.tidial_field_npix,
+                    FLAGS.field_npix,
                     endpoint=False),  # range of X coordinates
         np.linspace(0,
                     FLAGS.field_size,
-                    FLAGS.tidial_field_npix,
+                    FLAGS.field_npix,
                     endpoint=False))  # range of Y coordinates
 
     coords = np.stack([xgrid, ygrid], axis=0) * u.deg
     c = coords.reshape([2, -1]).T.to(u.rad)
-    im = interpolation(tidal_planes,
-                       dx=FLAGS.box_size / FLAGS.tidial_field_npix,
+    im = interpolation(plane_source,
+                       dx=FLAGS.box_size /2048,
                        r_source=r_source,
-                       tidial_field_npix=FLAGS.tidial_field_npix,
+                       field_npix=FLAGS.field_npix,
                        coords=c)
-    e1 = Epsilon1(cosmology, z_source, im, Aia, FLAGS.C1)
-    e2 = Epsilon1(cosmology, z_source, im, Aia, FLAGS.C1)
-    ke_tf, kb_tf = ks93_tf(e1, e2)
-    return ke_tf, kb_tf
+    k_ia=k_IA(cosmology,lens_source_a,im,Aia)
+    return k_ia
 
 
 def rebin(a, shape):
@@ -221,9 +212,9 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
             pgdparams)
 
         # Adds realism to convergence map
-        ke_tf, kb_tf = add_IA(states, params[0], params[1], params[2],
+        k_ia = add_IA(states, params[0], params[1], params[2],
                               params[3], params[4], params[5], params[6])
-        m = m[0] + ke_tf
+        m = m[0] - k_ia
         kmap_IA = desc_y1_analysis(m)
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum(
