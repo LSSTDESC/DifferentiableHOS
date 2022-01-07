@@ -16,7 +16,7 @@ import time
 from flowpm import tfpm
 import tensorflow_probability as tfp
 from scipy.stats import norm
-from flowpm.NLA_IA import interpolation,k_IA
+from flowpm.NLA_IA import k_IA
 from flowpm.fourier_smoothing import fourier_smoothing
 from flowpm.tfbackground import rad_comoving_distance
 
@@ -51,7 +51,7 @@ FLAGS = flags.FLAGS
 
 
 @tf.function
-def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
+def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
@@ -122,17 +122,33 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
     coords = np.stack([xgrid, ygrid], axis=0)
     c = coords.reshape([2, -1]).T / 180. * np.pi  # convert to rad from deg
     # Create array of source redshifts
-    z_source = tf.constant([[0.9720714]])
+    lens_source = states[::-1][11][1]
+    lens_source_a = states[::-1][11][0]
+    z_source = 1 / lens_source_a - 1
     m = flowpm.raytracing.convergenceBorn(cosmology,
                                           lensplanes,
                                           dx=FLAGS.box_size / 2048,
                                           dz=FLAGS.box_size,
                                           coords=c,
-                                          z_source=z_source)
+                                          z_source=z_source,
+                                          field_npix=FLAGS.field_npix)
 
-    m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix])
-
-    return m, states, lensplanes, r_center, a_center
+    r_source = rad_comoving_distance(cosmology, lens_source_a)
+    plane_source = flowpm.raytracing.density_plane(
+        lens_source,
+        [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+        FLAGS.nc // 2,
+        width=FLAGS.nc,
+        plane_resolution=2048,
+    )
+    im_IA = flowpm.raytracing.interpolation(plane_source,
+                                            dx=FLAGS.box_size / 2048,
+                                            r_center=r_source,
+                                            field_npix=FLAGS.field_npix,
+                                            coords=c)
+    k_ia = k_IA(cosmology, lens_source_a, im_IA, Aia)
+    kmap_IA = m - k_ia
+    return kmap_IA, states, lensplanes, r_center, a_center
 
 
 def desc_y1_analysis(kmap):
@@ -153,48 +169,6 @@ def desc_y1_analysis(kmap):
     return kmap
 
 
-def add_IA(states, Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
-    cosmology = flowpm.cosmology.Planck15(Omega_c=Omega_c,
-                                          sigma8=sigma8,
-                                          Omega_b=Omega_b,
-                                          n_s=n_s,
-                                          h=h,
-                                          w0=w0)
-    
-    lens_source=states[::-1][11][1]
-    lens_source_a=states[::-1][11][0]  
-    z_source=1/lens_source_a-1
-    r_source=rad_comoving_distance(cosmology,lens_source_a)
-    plane_source = flowpm.raytracing.density_plane(
-        lens_source,
-        [FLAGS.nc, FLAGS.nc, FLAGS.nc],
-        FLAGS.nc // 2,
-        width=FLAGS.nc,
-        plane_resolution=2048,
-    )
-    pix_scale_source =FLAGS.box_size/2048  #Mpc
-    sigma_pix_source = FLAGS.sigma_k / pix_scale_source
-    xgrid, ygrid = np.meshgrid(
-        np.linspace(0,
-                    FLAGS.field_size,
-                    FLAGS.field_npix,
-                    endpoint=False),  # range of X coordinates
-        np.linspace(0,
-                    FLAGS.field_size,
-                    FLAGS.field_npix,
-                    endpoint=False))  # range of Y coordinates
-
-    coords = np.stack([xgrid, ygrid], axis=0) * u.deg
-    c = coords.reshape([2, -1]).T.to(u.rad)
-    im = interpolation(plane_source,
-                       dx=FLAGS.box_size /2048,
-                       r_source=r_source,
-                       field_npix=FLAGS.field_npix,
-                       coords=c)
-    k_ia=k_IA(cosmology,lens_source_a,im,Aia)
-    return k_ia
-
-
 def rebin(a, shape):
     sh = shape, a.shape[0] // shape
     return tf.math.reduce_mean(tf.reshape(a, sh), axis=-1)
@@ -207,18 +181,15 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
     params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0, Aia])
     with tf.GradientTape() as tape:
         tape.watch(params)
-        m, states, lensplanes, r_center, a_center = compute_kappa(
+        kmap_IA, states, lensplanes, r_center, a_center = compute_kappa(
             params[0], params[1], params[2], params[3], params[4], params[5],
-            pgdparams)
+            params[6], pgdparams)
 
         # Adds realism to convergence map
-        k_ia = add_IA(states, params[0], params[1], params[2],
-                              params[3], params[4], params[5], params[6])
-        m = m[0] - k_ia
-        kmap_IA = desc_y1_analysis(m)
+        kmap = desc_y1_analysis(kmap_IA)
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum(
-            kmap_IA[0], FLAGS.field_size, FLAGS.field_npix)
+            kmap[0], FLAGS.field_size, FLAGS.field_npix)
 
         # Keep only ell between 300 and 3000
         ell = ell[2:46]
@@ -232,7 +203,7 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
                         experimental_use_pfor=False,
                         parallel_iterations=1)
 
-    return m, kmap_IA, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return kmap_IA, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
 
 
 def main(_):
@@ -243,7 +214,7 @@ def main(_):
         pgd_data = pickle.load(f)
         pgdparams = pgd_data['params']
 
-    m, kmap_IA, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
+    kmap_IA, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
         tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.Omega_b, dtype=tf.float32),
@@ -257,8 +228,8 @@ def main(_):
             'a': a_center,
             'lensplanes': lensplanes,
             'r': r_center,
-            'map': m.numpy(),
             'kmap_IA': kmap_IA.numpy(),
+            'kmap': kmap.numpy(),
             'ell': ell.numpy(),
             'ps': ps.numpy(),
             'jac_ps': jac_ps.numpy()
