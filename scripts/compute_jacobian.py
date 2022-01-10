@@ -203,7 +203,7 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
                         experimental_use_pfor=False,
                         parallel_iterations=1)
 
-    return kmap_IA, kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return  kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
 
 
 def main(_):
@@ -214,7 +214,7 @@ def main(_):
         pgd_data = pickle.load(f)
         pgdparams = pgd_data['params']
 
-    kmap_IA, kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
+    kmap, lensplanes, r_center, a_center, jac_ps, ell, ps = compute_jacobian(
         tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.Omega_b, dtype=tf.float32),
@@ -228,7 +228,6 @@ def main(_):
             'a': a_center,
             'lensplanes': lensplanes,
             'r': r_center,
-            'kmap_IA': kmap_IA.numpy(),
             'kmap': kmap.numpy(),
             'ell': ell.numpy(),
             'ps': ps.numpy(),
