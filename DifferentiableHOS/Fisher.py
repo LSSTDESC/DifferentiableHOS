@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from scipy.interpolate import interp1d
 
+
 class fisher(object):
     """
     Base class to perform a Fisher Analysis from specified cosmology,
     survey and cosmological parameters.
     """
-
     def __init__(self, Fisher, params, fid_cosmo, margin_params=[]):
         """
         Constructor
@@ -54,7 +54,6 @@ class fisher(object):
     def sigma_marg(self, param):
         return sqrt(self.invFij(param, param))
 
-
     def _marginalise(self, params):
         r""" Marginalises the Fisher matrix over unwanted parameters.
         Parameters
@@ -87,7 +86,10 @@ class fisher(object):
 
         for i in range(len(self.params)):
             for j in range(i):
-                ax = plt.subplot(len(self.params)-1, len(self.params)-1 , (i - 1)*(len(self.params)-1) + (j+1))
+                ax = plt.subplot(
+                    len(self.params) - 1,
+                    len(self.params) - 1,
+                    (i - 1) * (len(self.params) - 1) + (j + 1))
                 if i == len(self.params) - 1:
                     ax.set_xlabel(labels[j])
                 else:
@@ -97,7 +99,11 @@ class fisher(object):
                 else:
                     ax.set_yticklabels([])
 
-                self.plot(self.params[j], self.params[i], nstd=nstd, ax=ax, **kwargs)
+                self.plot(self.params[j],
+                          self.params[i],
+                          nstd=nstd,
+                          ax=ax,
+                          **kwargs)
 
         plt.subplots_adjust(wspace=0)
         plt.subplots_adjust(hspace=0)
@@ -131,13 +137,16 @@ class fisher(object):
 
         # Width and height are "full" widths, not radius
         width, height = 2 * nstd * sqrt(vals)
-        ellip = Ellipse(xy=pos, width=width,
-                        height=height, angle=theta, **kwargs)
+        ellip = Ellipse(xy=pos,
+                        width=width,
+                        height=height,
+                        angle=theta,
+                        **kwargs)
 
         ax.add_artist(ellip)
         sz = max(width, height)
-        s1 = 1.5*nstd*self.sigma_marg(p1)
-        s2 = 1.5*nstd*self.sigma_marg(p2)
+        s1 = 1.5 * nstd * self.sigma_marg(p1)
+        s2 = 1.5 * nstd * self.sigma_marg(p2)
         ax.set_xlim(pos[0] - s1, pos[0] + s1)
         ax.set_ylim(pos[1] - s2, pos[1] + s2)
         #ax.set_xlim(pos[0] - sz, pos[0] + sz)
@@ -183,7 +192,7 @@ class fisher(object):
 
             # Apply marginalisation over nuisance parameters
             self._invmat = self._fullInvMat[0:len(self.params),
-                                           0:len(self.params)]
+                                            0:len(self.params)]
 
             self._mat = linalg.pinv(self._invmat)
         return self._mat

@@ -82,8 +82,7 @@ def find_peaks2d_tf(image, mask=None, ordered=True, threshold=None):
 @tf.function
 def peaks_histogram_tf_mulscale(image,
                                 nscales=3,
-                                value_range=[-1., 1.],
-                                nbins=16,
+                                bins=None,
                                 mask=None,
                                 name='peakscount',
                                 bw_factor=2.):
@@ -98,9 +97,10 @@ def peaks_histogram_tf_mulscale(image,
         in the decomposition.
     value_range: Shape [2] Tensor of same dtype as image
         Range of values in the Histogram.
-    nbins : int 
-        Specification the number of bins to use for the
-        histogram. 
+    bins : int or tensor (1D), optional
+        Specification of centers or the number of bins to use for the
+        histogram. If not provided, a default of 10 bins linearly spaced
+        between the image minimum and maximum (inclusive) is used.
     mask : tensor (same shape as `image`), optional
         Tensor identifying which pixels of `image` to consider/exclude
         in finding peaks. Can either either be numeric (0 or 1) or boolean 
@@ -129,8 +129,16 @@ def peaks_histogram_tf_mulscale(image,
             coeffs = coeffs / factor
 
             # Histogram the coefficient values
-            bins = tf.linspace(value_range[0], value_range[1], nbins)
             image = tf.reshape(coeffs, [coeffs.shape[1], coeffs.shape[2]])
+            if bins is None:
+                bins = tf.linspace(tf.math.reduce_min(image),
+                                   tf.math.reduce_max(image), 10)
+            elif isinstance(bins, int):
+                bins = tf.linspace(tf.math.reduce_min(image),
+                                   tf.math.reduce_max(image), bins)
+            else:
+                bins = bins
+
             x, y, heights = find_peaks2d_tf(image, threshold=None, mask=mask)
 
             # To avoid issues, we clip the image to within the peaks
