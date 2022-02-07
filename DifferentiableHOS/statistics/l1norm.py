@@ -81,7 +81,7 @@ def l1norm(image,
             ]
 
             results.append(tf.stack(l1norm, axis=-1))
-        return results
+        return tf.stack(results, axis=0)
 
 
 def non_diffable_l1norm(image,

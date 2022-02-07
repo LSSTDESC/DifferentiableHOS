@@ -203,7 +203,7 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
                         experimental_use_pfor=False,
                         parallel_iterations=1)
 
-    return  kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
 
 
 def main(_):

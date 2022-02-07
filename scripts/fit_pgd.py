@@ -70,16 +70,18 @@ def pgd_loss(alpha, scales, state, target_pk, return_pk=False):
         weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
     else:
         weight = np.ones_like(k)
-  weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
-  rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
-  loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
-  if return_pk:
-    return loss, pk
-  else:
-    weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
-    weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
-    rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
-    loss = tf.reduce_sum((weight * (1 - pk / target_pk / rescale_factor))**2)
+        weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
+        rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
+        loss = tf.reduce_sum(
+            (weight * (1 - pk / target_pk / rescale_factor))**2)
+    if return_pk:
+        return loss, pk
+    else:
+        weight = 1 - k / (np.pi * FLAGS.nc / FLAGS.box_size)
+        weight = tf.convert_to_tensor(weight / weight.sum(), dtype=tf.float32)
+        rescale_factor = 1.0  # pk[0]/target_pk[0] # To account for variance on large scale
+        loss = tf.reduce_sum(
+            (weight * (1 - pk / target_pk / rescale_factor))**2)
     if return_pk:
         return loss, pk
     else:
@@ -169,17 +171,17 @@ def main(_):
         plt.savefig('PGD_fit_%0.2f.png' % a)
         plt.close()
 
-
     pickle.dump(
-      {
-          'B': FLAGS.B,
-          'nsteps': FLAGS.nsteps,
-          'params': params,
-          'scale_factors': scale_factors,
-          'cosmology': cosmology.to_dict(),
-          'boxsize': FLAGS.box_size,
-          'nc': FLAGS.nc
-      }, open(FLAGS.filename, "wb"))
+        {
+            'B': FLAGS.B,
+            'nsteps': FLAGS.nsteps,
+            'params': params,
+            'scale_factors': scale_factors,
+            'cosmology': cosmology.to_dict(),
+            'boxsize': FLAGS.box_size,
+            'nc': FLAGS.nc
+        }, open(FLAGS.filename, "wb"))
+
 
 if __name__ == "__main__":
     app.run(main)

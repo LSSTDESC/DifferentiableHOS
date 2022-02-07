@@ -14,6 +14,9 @@ from itertools import cycle
 import tensorflow_addons as tfa
 import time
 from scipy.stats import norm
+from flowpm.NLA_IA import k_IA
+from flowpm.fourier_smoothing import fourier_smoothing
+from flowpm.tfbackground import rad_comoving_distance
 
 flags.DEFINE_string("filename", "jac_1_20.pkl", "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
@@ -34,38 +37,20 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
-flags.DEFINE_integer("nmaps", 20, "Number maps to generate.")
+flags.DEFINE_integer("nmaps", 10, "Number maps to generate.")
+flags.DEFINE_float(
+    "Aia", 1.,
+    "The amplitude parameter A describes the strength of the tidal coupling")
+flags.DEFINE_float(
+    "sigma_k", 0.1,
+    "Value of the sigma in two-dimensional smoothing kernel used to compute the projected tidal shear"
+)
 
 FLAGS = flags.FLAGS
 
 
-def make_power_map(power_spectrum, size, kps=None):
-    #Ok we need to make a map of the power spectrum in Fourier space
-    k1 = np.fft.fftfreq(size)
-    k2 = np.fft.fftfreq(size)
-    kcoords = np.meshgrid(k1, k2)
-    # Now we can compute the k vector
-    k = np.sqrt(kcoords[0]**2 + kcoords[1]**2)
-    if kps is None:
-        kps = np.linspace(0, 0.5, len(power_spectrum))
-    # And we can interpolate the PS at these positions
-    ps_map = np.interp(k.flatten(), kps, power_spectrum).reshape([size, size])
-    ps_map = ps_map
-    return ps_map
-
-
-def fourier_smoothing(kappa, sigma, resolution):
-    im = tf.signal.fft2d(tf.cast(kappa, tf.complex64))
-    kps = np.linspace(0, 0.5, resolution)
-    filter = norm(0, 1. / (2. * np.pi * sigma)).pdf(kps)
-    m = make_power_map(filter, resolution, kps=kps)
-    m /= m[0, 0]
-    im = tf.cast(tf.reshape(m, [1, resolution, resolution]), tf.complex64) * im
-    return tf.cast(tf.signal.ifft2d(im), tf.float32)
-
-
 @tf.function
-def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
+def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
@@ -136,17 +121,33 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
     coords = np.stack([xgrid, ygrid], axis=0)
     c = coords.reshape([2, -1]).T / 180. * np.pi  # convert to rad from deg
     # Create array of source redshifts
-    z_source = tf.constant([1.])
+    lens_source = states[::-1][11][1]
+    lens_source_a = states[::-1][11][0]
+    z_source = 1 / lens_source_a - 1
     m = flowpm.raytracing.convergenceBorn(cosmology,
                                           lensplanes,
                                           dx=FLAGS.box_size / 2048,
                                           dz=FLAGS.box_size,
                                           coords=c,
-                                          z_source=z_source)
+                                          z_source=z_source,
+                                          field_npix=FLAGS.field_npix)
 
-    m = tf.reshape(m, [FLAGS.batch_size, FLAGS.field_npix, FLAGS.field_npix])
-
-    return m, lensplanes, r_center, a_center
+    r_source = rad_comoving_distance(cosmology, lens_source_a)
+    plane_source = flowpm.raytracing.density_plane(
+        lens_source,
+        [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+        FLAGS.nc // 2,
+        width=FLAGS.nc,
+        plane_resolution=2048,
+    )
+    im_IA = flowpm.raytracing.interpolation(plane_source,
+                                            dx=FLAGS.box_size / 2048,
+                                            r_center=r_source,
+                                            field_npix=FLAGS.field_npix,
+                                            coords=c)
+    k_ia = k_IA(cosmology, lens_source_a, im_IA, Aia)
+    kmap_IA = m - k_ia
+    return kmap_IA, lensplanes, r_center, a_center
 
 
 def desc_y1_analysis(kmap):
@@ -157,7 +158,7 @@ def desc_y1_analysis(kmap):
     pix_scale = FLAGS.field_size / FLAGS.field_npix * 60  # arcmin
     ngal_per_pix = ngal * pix_scale**2  # galaxies per pixels
     sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)  # Rescaled noise sigma
-    sigma_pix = 1. / pix_scale  # Smooth at 1 arcmin
+    sigma_pix = 3.6 / pix_scale  # Smooth at 1 arcmin
     # Add noise
     kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
     # Add smoothing
@@ -173,35 +174,32 @@ def rebin(a, shape):
 
 
 @tf.function
-def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, pgdparams):
+def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
     """ Function that actually computes the Jacobian of a given statistics
     """
-    params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0])
+    params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0, Aia])
     with tf.GradientTape() as tape:
         tape.watch(params)
-        m, lensplanes, r_center, a_center = compute_kappa(
+        kmap_IA, lensplanes, r_center, a_center = compute_kappa(
             params[0], params[1], params[2], params[3], params[4], params[5],
-            pgdparams)
+            params[6], pgdparams)
 
         # Adds realism to convergence map
-        kmap = desc_y1_analysis(m)
+        kmap = desc_y1_analysis(kmap_IA)
 
-        # Compute l1norm
-        # l1 = DHOS.statistics.l1norm(kmap[0],
-        #                             nscales=7,
-        #                             nbins=8,
-        #                             value_range=[-0.05, 0.05])[1][0]
-        l1 = DHOS.statistics.l1norm(kmap,
-                                    nscales=7,
-                                    nbins=8,
-                                    value_range=[-0.05, 0.05])[2]
+        l1norm = DHOS.statistics.l1norm(kmap,
+                                        nscales=5,
+                                        nbins=8,
+                                        value_range=[-0.2, 0.5])[3:]
+        #l1=tf.reshape(l1norm, [-1])
+        l1 = l1norm
 
     jac = tape.jacobian(l1,
                         params,
                         experimental_use_pfor=False,
                         parallel_iterations=1)
 
-    return m, kmap, lensplanes, r_center, a_center, jac, l1
+    return kmap, lensplanes, r_center, a_center, jac, l1
 
 
 def main(_):
@@ -211,20 +209,20 @@ def main(_):
     for i in range(FLAGS.nmaps):
         t = time.time()
         # Query the jacobian
-        m, kmap, lensplanes, r_center, a_center, jac, l1 = compute_jacobian(
+        kmap, lensplanes, r_center, a_center, jac, l1 = compute_jacobian(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.Omega_b, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.n_s, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.h, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.w0, dtype=tf.float32), pgdparams)
+            tf.convert_to_tensor(FLAGS.w0, dtype=tf.float32),
+            tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams)
         # Saving results in requested filename
         pickle.dump(
             {
                 'a': a_center,
                 'lensplanes': lensplanes,
                 'r': r_center,
-                'map': m.numpy(),
                 'kmap': kmap.numpy(),
                 'jac': jac.numpy(),
                 'l1': l1.numpy()
