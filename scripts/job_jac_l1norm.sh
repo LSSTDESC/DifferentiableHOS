@@ -3,7 +3,7 @@
 #SBATCH --qos=regular
 #SBATCH --constraint=haswell
 #SBATCH --array=0-50
-#SBATCH -t 02:00:00
+#SBATCH -t 03:40:00
 #SBATCH --mail-user=denise.lanzieri@cea.fr
 
 conda deactivate
