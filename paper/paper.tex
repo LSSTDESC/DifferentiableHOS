@@ -253,29 +253,51 @@ In this paper, the angular power spectrum is computed from the noisy smoothed co
 
 
 To understand how accurate our simulations are, and to validate the choice of the smoothing size to apply, we tried to reproduce the summary statistics from the only Dark $\kappa$TNG simulations. 
- We show the results from the angular power spectrum comparison for 3 source redshifts in Figure \ref{fig:clsratktng_comp1arc}.
+ We show the results from the angular power spectrum comparison for 3 source redshifts in Figure \ref{fig:clsktng_comp1arc}.
 \begin{figure}
     \centering
-    \includegraphics[width=\columnwidth]{paper/figures/clsratktng_comp1arc.png}
+    \includegraphics[width=\columnwidth]{paper/figures/clsktng_comp1arc.png}
     \caption{
-The fractional differences of the DLL power spectra with respect to the $\kappa$TNG predictions for 3 source redshifts.
- The power spectra means over 100 map realisations. The maps are smoothed with a 1 arcmin Gaussian filter. The shaded regions represent the standard deviation from 1000 $\kappa$TNG realisations.}
-    \label{fig:clsratktng_comp1arc}
+    \textbf{Upper panel}: Angular power spectra for 3 different source redshifts from
+our DLL maps compared to the $\kappa$TNG predictions.
+ \textbf{Lower panel}
+The fractional differences of the DLL power spectra with respect to the $\kappa$TNG predictions.The shaded regions represent the standard deviation from 1000 $\kappa$TNG realisations. \\
+ The power spectra mean over 100 map realisations.The maps are smoothed with a 1 arcmin Gaussian filter. }
+    \label{fig:clsktng_comp1arc}
 \end{figure}
 % with a smoothing size $\theta=3.6$. We perform the angular power spectrum analysis in a range of $\ell=[300,3000]$ according to the requirement specified in  \cite{mandelbaum2018lsst}. 
-
-For each map, we compute the power spectrum by using our own code implemented in the Tensorflow framework and we take the average over 2000 maps realisation.
+\denise{draw conclusions from this plot}
+For each map, we compute the power spectrum by using our own code implemented in the Tensorflow framework.
+%and we take the average over 2000 maps realisation.
 
 \subsubsection{Wavelet Peak Counts}
 It has been shown that it's necessary to go beyond second-order statistics to fully capture the non-Gaussian information encoded in the peak of the matter distribution. Several studies have proved that the  weak-lensing peak counts provide a way to capture information from non-linear structures that it is complementary to the information extracted by power spectrum.
 The peak counts identify region of weak lensing map where the density value is higher, in this way they rely to the massive structure.
 There are different ways to record the weak lensing peaks: the number of peaks as a function of either the signal-to-noise ratio or the convergence $\kappa$ of the peaks. 
 In this paper, we choose to bin the peaks as function of $\kappa$. 
-As for the angular power spectrum, the weak lensing peaks are detected from the noise and smoothed simulated maps by using our own code and by averaging over 2000 different realizations. A peak is identified as the pixel of larger value than its eight neighbors in the image, convolved with a starlet filter $\mathcal{W}(\theta_{\text{ker}})$:
+As for the angular power spectrum, the weak lensing peaks are detected from the noise and smoothed simulated maps by using our own code.
+%and by averaging over 2000 different realizations. 
+A peak is identified as the pixel of larger value than its eight neighbors in the image, convolved with a starlet filter $\mathcal{W}(\theta_{\text{ker}})$:
 \begin{equation}
     \textbf{Peaks}=(\kappa*\mathcal{W})(\theta_{\text{ker}})
 \end{equation}
- We consider the peak distribution for 8 linearly spaced bins within the range $\kappa=[-0.05, 0.05]$. The bins are chosen such that at least 30 peaks are recorded in each bin. 
+Similar to the power spectrum, we compare the peak counts statistic from our map to the one from the $\kappa$TNG.
+This allow us to identify the bins to discard (bins where the distribution of peaks is not Gaussian) as well as, the wavelet scale to discard. 
+In Figure 6, we show the number counts of peaks in the upper panels, and the fractional differences between the DLL and $\kappa$TNG-Dark maps in the lower panels.
+Again we smooth the convergence maps with a 1 arcmin Gaussian filter. The peak are counted for 8 linearly spaced bins within the range $(\kappa*\mathcal{W})=[-0.2, 0.5]$. 
+%The bins are chosen such that at least 30 peaks are recorded in each bin. 
+
+\ref{fig:peakktng_comp1arc}.
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{paper/figures/peakktng_comp1arc.png}
+    \caption{
+      \textbf{Upper panel}: Peak counts from our DLL map at source redshift $z_s=1.034$ compared to the $\kappa$TNG at the same redshift. \textbf{Lower panel}: The fractional differences between the DLL and $\kappa$TNG map.
+ The peak counts mean over 100 map realisations. The maps are smoothed with a 1 arcmin Gaussian filter. }
+    \label{fig:peakktng_comp1arc}
+\end{figure}
+
+
 
 \EiffL{Explain wavelets}
 
@@ -284,7 +306,15 @@ an histogram of peak intensities, and histograms, due to the discrete nature of 
 
 \subsubsection{Wavelet $\ell_1-$norm}
 
-
+\ref{fig:l1normktng_comp1arc}.
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{paper/figures/l1normktng_comp1arc.png}
+    \caption{
+      \textbf{Upper panel}: $l_1$norm from our DLL map at source redshift $z_s=1.034$ compared to the $\kappa$TNG at the same redshift. \textbf{Lower panel}: The fractional differences between the DLL and $\kappa$TNG map.
+ The $l_1$norm mean over 100 map realisations. The maps are smoothed with a 1 arcmin Gaussian filter. }
+    \label{fig:l1normktng_comp1arc}
+\end{figure}
 
 
 \EiffL{Explain what's the deal with this l1 norm}
