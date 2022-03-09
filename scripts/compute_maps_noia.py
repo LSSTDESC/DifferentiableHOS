@@ -12,22 +12,19 @@ from flowpm.tfpower import linear_matter_power
 import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
-from flowpm.redshift import LSST_Y1_tomog
 import time
 from flowpm import tfpm
 from scipy.stats import norm
-from flowpm.NLA_IA import k_IA
 from flowpm.fourier_smoothing import fourier_smoothing
 from flowpm.tfbackground import rad_comoving_distance
 
-
-flags.DEFINE_string("filename", "/pscratch/sd/d/dlan/maps/maps4/results_maps.pkl", "Output filename")
-flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
-                    "PGD parameter files")
+flags.DEFINE_string("filename",
+                    "/pscratch/sd/d/dlan/maps_noia/maps4/results_maps.pkl",
+                    "Output filename")
 flags.DEFINE_string(
-    "photoz", "/global/homes/d/dlan/flowpm/notebooks/dev/nz_norm.npy",
-    "Normalized Photoz distribution, where the first array is the z, the remaining n(z)"
-)
+    "pgd_params",
+    "/global/homes/d/dlan/DifferentiableHOS/scripts/results_fit_PGD_205_128.pkl",
+    "PGD parameter files")
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_integer("nc", 128,
@@ -41,19 +38,12 @@ flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
 flags.DEFINE_integer("nmaps", 50, "Number maps to generate.")
-flags.DEFINE_float(
-    "Aia", 1.,
-    "The amplitude parameter A describes the strength of the tidal coupling")
-flags.DEFINE_float(
-    "sigma_k", 0.1,
-    "Value of the sigma in two-dimensional smoothing kernel used to compute the projected tidal shear"
-)
 
 FLAGS = flags.FLAGS
 
 
 @tf.function
-def compute_kappa(Omega_c, sigma8, Aia, pgdparams, photoz):
+def compute_kappa(Omega_c, sigma8, pgdparams):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
@@ -93,11 +83,16 @@ def compute_kappa(Omega_c, sigma8, Aia, pgdparams, photoz):
                           stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
                           return_intermediate_states=True,
                           pgdparams=pgdparams)
-
+    states_nopgd = flowpm.nbody(cosmology,
+                                initial_state,
+                                stages, [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+                                return_intermediate_states=True)
     # Extract the lensplanes
     lensplanes = []
+    lensplanes_nopgd = []
     matrix = flowpm.raytracing.rotation_matrices()
     for i, j in zip(range(len(a_center)), cycle(range(6))):
+        shift_both = flowpm.raytracing.random_2d_shift()
         plane = flowpm.raytracing.density_plane(
             states[::-1][i][1],
             [FLAGS.nc, FLAGS.nc, FLAGS.nc],
@@ -105,37 +100,69 @@ def compute_kappa(Omega_c, sigma8, Aia, pgdparams, photoz):
             width=FLAGS.nc,
             plane_resolution=2048,
             rotation=matrix[j],
-            shift=flowpm.raytracing.random_2d_shift(),
+            shift=shift_both,
         )
 
         plane = fourier_smoothing(plane, sigma=1.024, resolution=2048)
         lensplanes.append((r_center[i], states[::-1][i][0], plane))
-    z_source = 1/a_center-1
-    m = LSST_Y1_tomog(cosmology,
-                      lensplanes,
-                      box_size=FLAGS.box_size,
-                      z_source=z_source,
-                      z=photoz[0],
-                      nz=photoz[1:],
-                      field_npix=FLAGS.field_npix,
-                      field_size=FLAGS.field_size,
-                      nbin=3,
-                      use_A_ia=False,
-                      Aia=None)
+        plane_nopgd = flowpm.raytracing.density_plane(
+            states_nopgd[::-1][i][1],
+            [FLAGS.nc, FLAGS.nc, FLAGS.nc],
+            FLAGS.nc // 2,
+            width=FLAGS.nc,
+            plane_resolution=2048,
+            rotation=matrix[j],
+            shift=shift_both,
+        )
 
-    m_IA = LSST_Y1_tomog(cosmology,
-                         lensplanes,
-                         box_size=FLAGS.box_size,
-                         z_source=z_source,
-                         z=photoz[0],
-                         nz=photoz[1:],
-                         field_npix=FLAGS.field_npix,
-                         field_size=FLAGS.field_size,
-                         nbin=3,
-                         use_A_ia=True,
-                         Aia=FLAGS.Aia)
-    kmap_IA =tf.stack(m)-tf.stack(m_IA) 
-    return kmap_IA, m, m_IA
+        plane_nopgd = fourier_smoothing(plane_nopgd,
+                                        sigma=1.024,
+                                        resolution=2048)
+        lensplanes_nopgd.append(
+            (r_center[i], states_nopgd[::-1][i][0], plane_nopgd))
+    xgrid, ygrid = np.meshgrid(
+        np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
+                    endpoint=False),  # range of X coordinates
+        np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
+                    endpoint=False))  # range of Y coordinates
+
+    coords = np.stack([xgrid, ygrid], axis=0)
+    c = coords.reshape([2, -1]).T / 180. * np.pi  # convert to rad from deg
+    # Create array of source redshifts
+    z_source = tf.convert_to_tensor([1.034, 0.858, 1.163], dtype=tf.float32)
+    m = flowpm.raytracing.convergenceBorn(cosmology,
+                                          lensplanes,
+                                          dx=FLAGS.box_size / 2048,
+                                          dz=FLAGS.box_size,
+                                          coords=c,
+                                          z_source=z_source,
+                                          field_npix=FLAGS.field_npix)
+    m_nopgd = flowpm.raytracing.convergenceBorn(cosmology,
+                                                lensplanes_nopgd,
+                                                dx=FLAGS.box_size / 2048,
+                                                dz=FLAGS.box_size,
+                                                coords=c,
+                                                z_source=z_source,
+                                                field_npix=FLAGS.field_npix)
+    return m, m_nopgd, states, states_nopgd, r_center, a_center, initial_conditions
+
+
+def desc_y1_analysis(kmap):
+    """
+  Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
+  """
+    ngal = 10  # gal/arcmin **2
+    pix_scale = FLAGS.field_size / FLAGS.field_npix * 60  # arcmin
+    ngal_per_pix = ngal * pix_scale**2  # galaxies per pixels
+    sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)  # Rescaled noise sigma
+    sigma_pix = 1. / pix_scale  # Smooth at 3.6 arcmin
+    # Add noise
+    kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
+    # Add smoothing
+    kmap = fourier_smoothing(kmap,
+                             sigma=sigma_pix,
+                             resolution=FLAGS.field_npix)
+    return kmap
 
 
 def main(_):
@@ -144,21 +171,27 @@ def main(_):
     with open(FLAGS.pgd_params, "rb") as f:
         pgd_data = pickle.load(f)
         pgdparams = pgd_data['params']
-    photoz = np.load(FLAGS.photoz)
+
     for i in range(FLAGS.nmaps):
         t = time.time()
 
-        kmap_IA, m, m_ia = compute_kappa(
+        m, m_nopgd, states, states_nopgd, r_center, a_center, initial_conditions = compute_kappa(
             tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams,
-            photoz)
+            tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32), pgdparams)
+        kmap = desc_y1_analysis(m)
+        kmap_nopgd = desc_y1_analysis(m_nopgd)
         # Saving results in requested filename
         pickle.dump(
             {
-                'm': [k.numpy() for k in m],
-                'm_ia': [k.numpy() for k in m_ia],
-                'kmap_IA': [k.numpy() for k in kmap_IA],
+                'kmap': kmap.numpy(),
+                'kmap_nopgd': kmap_nopgd.numpy(),
+                'states': [s[1].numpy() for s in states],
+                'states_nopgd': [s[1].numpy() for s in states_nopgd],
+                'a': a_center.numpy(),
+                'm': m.numpy(),
+                'm_nopgd': m_nopgd.numpy(),
+                'r': r_center.numpy(),
+                'initial_conditions': initial_conditions.numpy()
             }, open(FLAGS.filename + '_%d' % i, "wb"))
         print("iter", i, "took", time.time() - t)
 
