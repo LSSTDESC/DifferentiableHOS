@@ -20,8 +20,9 @@ from flowpm.NLA_IA import k_IA
 from flowpm.fourier_smoothing import fourier_smoothing
 from flowpm.tfbackground import rad_comoving_distance
 
-
-flags.DEFINE_string("filename", "/pscratch/sd/d/dlan/maps/maps4/results_maps.pkl", "Output filename")
+flags.DEFINE_string("filename",
+                    "/pscratch/sd/d/dlan/maps/maps4/results_maps.pkl",
+                    "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
                     "PGD parameter files")
 flags.DEFINE_string(
@@ -110,7 +111,7 @@ def compute_kappa(Omega_c, sigma8, Aia, pgdparams, photoz):
 
         plane = fourier_smoothing(plane, sigma=1.024, resolution=2048)
         lensplanes.append((r_center[i], states[::-1][i][0], plane))
-    z_source = 1/a_center-1
+    z_source = 1 / a_center - 1
     m = LSST_Y1_tomog(cosmology,
                       lensplanes,
                       box_size=FLAGS.box_size,
@@ -134,7 +135,7 @@ def compute_kappa(Omega_c, sigma8, Aia, pgdparams, photoz):
                          nbin=3,
                          use_A_ia=True,
                          Aia=FLAGS.Aia)
-    kmap_IA =tf.stack(m)-tf.stack(m_IA) 
+    kmap_IA = tf.stack(m) - tf.stack(m_IA)
     return kmap_IA, m, m_IA
 
 

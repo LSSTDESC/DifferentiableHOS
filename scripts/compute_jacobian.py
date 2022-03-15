@@ -56,7 +56,8 @@ FLAGS = flags.FLAGS
 
 
 @tf.function
-def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,photoz):
+def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,
+                  photoz):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
@@ -120,7 +121,7 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,photoz):
         lensplanes.append((r_center[i], states[::-1][i][0], plane))
 
     # Create array of source redshifts
-    z_source = 1/a_center-1
+    z_source = 1 / a_center - 1
     m = LSST_Y1_tomog(cosmology,
                       lensplanes,
                       box_size=FLAGS.box_size,
@@ -144,8 +145,8 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,photoz):
                          nbin=3,
                          use_A_ia=True,
                          Aia=FLAGS.Aia)
-    kmap_IA =tf.stack(m)-tf.stack(m_IA) 
-    return kmap_IA, states, lensplanes, r_center, a_center
+    kmap_IA = tf.stack(m) - tf.stack(m_IA)
+    return kmap_IA, lensplanes, r_center, a_center
 
 
 def desc_y1_analysis(kmap):
@@ -172,35 +173,39 @@ def rebin(a, shape):
 
 
 @tf.function
-def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,photoz):
+def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,
+                     photoz):
     """ Function that actually computes the Jacobian of a given statistics
     """
     params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0, Aia])
     with tf.GradientTape() as tape:
         tape.watch(params)
-        kmap_IA, states, lensplanes, r_center, a_center = compute_kappa(
+        kmap_IA, lensplanes, r_center, a_center = compute_kappa(
             params[0], params[1], params[2], params[3], params[4], params[5],
-            params[6], pgdparams,photoz)
+            params[6], pgdparams, photoz)
 
         # Adds realism to convergence map
         kmap = desc_y1_analysis(kmap_IA)
         # Compute power spectrum
-        ell, power_spectrum = DHOS.statistics.power_spectrum(
-            kmap[0], FLAGS.field_size, FLAGS.field_npix)
+        ps = []
+        for i in range(3):
+            ell, power_spectrum = DHOS.statistics.power_spectrum(
+                kmap[i], FLAGS.field_size, FLAGS.field_npix)
 
-        # Keep only ell between 300 and 3000
-        ell = ell[2:46]
-        power_spectrum = power_spectrum[2:46]
+            # Keep only ell between 300 and 3000
+            ell = ell[2:46]
+            power_spectrum = power_spectrum[2:46]
 
-        # Further reducing the nnumber of points
-        ell = rebin(ell, 11)
-        power_spectrum = rebin(power_spectrum, 11)
-    jac = tape.jacobian(power_spectrum,
+            # Further reducing the nnumber of points
+            ell = rebin(ell, 11)
+            power_spectrum = rebin(power_spectrum, 11)
+            ps.append(power_spectrum)
+        ps = tf.stack(ps)
+    jac = tape.jacobian(ps,
                         params,
                         experimental_use_pfor=False,
                         parallel_iterations=1)
-
-    return kmap, lensplanes, r_center, a_center, jac, ell, power_spectrum
+    return kmap, lensplanes, r_center, a_center, jac, ell, ps
 
 
 def main(_):
@@ -218,7 +223,7 @@ def main(_):
         tf.convert_to_tensor(FLAGS.n_s, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.h, dtype=tf.float32),
         tf.convert_to_tensor(FLAGS.w0, dtype=tf.float32),
-        tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams,photoz)
+        tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams, photoz)
     # Saving results in requested filename
     pickle.dump(
         {

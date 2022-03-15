@@ -12,6 +12,7 @@ from flowpm.tfpower import linear_matter_power
 import astropy.units as u
 from itertools import cycle
 import tensorflow_addons as tfa
+from flowpm.redshift import LSST_Y1_tomog
 import time
 from scipy.stats import norm
 from flowpm.NLA_IA import k_IA
@@ -21,6 +22,10 @@ from flowpm.tfbackground import rad_comoving_distance
 flags.DEFINE_string("filename", "jac_1_20.pkl", "Output filename")
 flags.DEFINE_string("pgd_params", "results_fit_PGD_205_128.pkl",
                     "PGD parameter files")
+flags.DEFINE_string(
+    "photoz", "/global/homes/d/dlan/flowpm/notebooks/dev/nz_norm.npy",
+    "Normalized Photoz distribution, where the first array is the z, the remaining n(z)"
+)
 flags.DEFINE_float("Omega_c", 0.2589, "Fiducial CDM fraction")
 flags.DEFINE_float("Omega_b", 0.04860, "Fiducial baryonic matter fraction")
 flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
@@ -50,7 +55,8 @@ FLAGS = flags.FLAGS
 
 
 @tf.function
-def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
+def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,
+                  photoz):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
     """
@@ -112,41 +118,32 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
 
         fourier_smoothing(plane, sigma=1.024, resolution=2048)
         lensplanes.append((r_center[i], states[::-1][i][0], plane))
-    xgrid, ygrid = np.meshgrid(
-        np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
-                    endpoint=False),  # range of X coordinates
-        np.linspace(0, FLAGS.field_size, FLAGS.field_npix,
-                    endpoint=False))  # range of Y coordinates
-
-    coords = np.stack([xgrid, ygrid], axis=0)
-    c = coords.reshape([2, -1]).T / 180. * np.pi  # convert to rad from deg
     # Create array of source redshifts
-    lens_source = states[::-1][11][1]
-    lens_source_a = states[::-1][11][0]
-    z_source = 1 / lens_source_a - 1
-    m = flowpm.raytracing.convergenceBorn(cosmology,
-                                          lensplanes,
-                                          dx=FLAGS.box_size / 2048,
-                                          dz=FLAGS.box_size,
-                                          coords=c,
-                                          z_source=z_source,
-                                          field_npix=FLAGS.field_npix)
+    z_source = 1 / a_center - 1
+    m = LSST_Y1_tomog(cosmology,
+                      lensplanes,
+                      box_size=FLAGS.box_size,
+                      z_source=z_source,
+                      z=photoz[0],
+                      nz=photoz[1:],
+                      field_npix=FLAGS.field_npix,
+                      field_size=FLAGS.field_size,
+                      nbin=3,
+                      use_A_ia=False,
+                      Aia=None)
 
-    r_source = rad_comoving_distance(cosmology, lens_source_a)
-    plane_source = flowpm.raytracing.density_plane(
-        lens_source,
-        [FLAGS.nc, FLAGS.nc, FLAGS.nc],
-        FLAGS.nc // 2,
-        width=FLAGS.nc,
-        plane_resolution=2048,
-    )
-    im_IA = flowpm.raytracing.interpolation(plane_source,
-                                            dx=FLAGS.box_size / 2048,
-                                            r_center=r_source,
-                                            field_npix=FLAGS.field_npix,
-                                            coords=c)
-    k_ia = k_IA(cosmology, lens_source_a, im_IA, Aia)
-    kmap_IA = m - k_ia
+    m_IA = LSST_Y1_tomog(cosmology,
+                         lensplanes,
+                         box_size=FLAGS.box_size,
+                         z_source=z_source,
+                         z=photoz[0],
+                         nz=photoz[1:],
+                         field_npix=FLAGS.field_npix,
+                         field_size=FLAGS.field_size,
+                         nbin=3,
+                         use_A_ia=True,
+                         Aia=FLAGS.Aia)
+    kmap_IA = tf.stack(m) - tf.stack(m_IA)
     return kmap_IA, lensplanes, r_center, a_center
 
 
@@ -174,7 +171,8 @@ def rebin(a, shape):
 
 
 @tf.function
-def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
+def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams,
+                     photoz):
     """ Function that actually computes the Jacobian of a given statistics
     """
     params = tf.stack([Omega_c, sigma8, Omega_b, n_s, h, w0, Aia])
@@ -182,18 +180,18 @@ def compute_jacobian(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia, pgdparams):
         tape.watch(params)
         kmap_IA, lensplanes, r_center, a_center = compute_kappa(
             params[0], params[1], params[2], params[3], params[4], params[5],
-            params[6], pgdparams)
+            params[6], pgdparams, photoz)
 
         # Adds realism to convergence map
         kmap = desc_y1_analysis(kmap_IA)
-
-        l1norm = DHOS.statistics.l1norm(kmap,
-                                        nscales=5,
-                                        nbins=8,
-                                        value_range=[-0.2, 0.5])[3:]
-        #l1=tf.reshape(l1norm, [-1])
-        l1 = l1norm
-
+        l1 = []
+        for i in range(3):
+            l1norm = DHOS.statistics.l1norm(kmap,
+                                            nscales=5,
+                                            nbins=8,
+                                            value_range=[-0.2, 0.5])[3:]
+            l1.append(l1norm)
+        l1 = tf.stack(l1)
     jac = tape.jacobian(l1,
                         params,
                         experimental_use_pfor=False,
@@ -206,6 +204,7 @@ def main(_):
     with open(FLAGS.pgd_params, "rb") as f:
         pgd_data = pickle.load(f)
         pgdparams = pgd_data['params']
+    photoz = np.load(FLAGS.photoz)
     for i in range(FLAGS.nmaps):
         t = time.time()
         # Query the jacobian
@@ -216,7 +215,8 @@ def main(_):
             tf.convert_to_tensor(FLAGS.n_s, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.h, dtype=tf.float32),
             tf.convert_to_tensor(FLAGS.w0, dtype=tf.float32),
-            tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams)
+            tf.convert_to_tensor(FLAGS.Aia, dtype=tf.float32), pgdparams,
+            photoz)
         # Saving results in requested filename
         pickle.dump(
             {
