@@ -10,8 +10,8 @@
 \usepackage{ae,aecompl}
 \usepackage[utf8]{inputenc}
 \usepackage[figure,figure*]{hypcap}
-
-\usepackage{url}
+\usepackage{hyperref}
+% \usepackage{url}
 \urlstyle{same}
 
 \usepackage{lineno}
@@ -138,32 +138,42 @@ Thus, the Born–approximated convergence can be interpreted as the integrated t
 It's well known that an common feature of statics beyond second-order is the absence of analytical models with which to predict the observed signals. Hence, we need to adopt a forward modelling approach and create a suite of numerical simulations. 
 In the following section we introduce the mass map simulation procedure, including a description of the simulator and of the construction of the weak lensing lightcone.
 
-\subsubsection{FLOWPM}
-Our weak lensing simulation tool is based on FlowPM (/cite Modi, Lanusse et al. ), a fast particle-mesh solver that implements the time integration for gravitational evolution starting from the Gaussian initial conditions of the Universe to the observed large scale structures through a Kick-Drift scheme.
+\subsubsection{N-body simulations}
+
+Our weak lensing simulation tool is based on the FlowPM (\cite{modi2021flowpm}) N-body code.
+FlowPM is a fast particle-mesh solver that implements the time integration of a given initial linear field  across a given array of scale factors implementing a series of Kick-Drift-Kick operations. We assume a flat $\Lambda$CDM universe and fix the cosmological parameters such that they match the results of Planck 2015 (\cite{ade2016planck}). We run simulations with $128^3$ particles in a volume of $205^3 h^{-1}$ Mpc$^3$.
+The initial condition are generated at redshift $z_{init}=9$ by using the normalised linear matter power spectrum as implemented by (\cite{eisenstein1998baryonic}) and generated the linear field at requested scale.
+The simulations are run with 4 time steps equally spaced in scale factor up to the redshift $z=0.972$, and 11 time steps equally spaced in comoving distance of $205$ $h^{-1}$Mpc (length of the box size) up to the final redshift $z=0.0$.  \\
+We export the snapshots corresponding to the last eleven time steps, this we allow us to build the light cone necessary to construct the weak lensing mock maps.
 
 
-After instantiating the $\Lambda$CDM cosmology with our desired parameters, (the initial power spectrum and the evolution of the particles depend from $\sigma_8$ and $\Omega_{c}$) we created the initial condition for the N-body simulation using the normalised linear matter power spectrum as implemented by (/cite Eisenstein and Hu of '98 ) and generated the linear field at requested scale. After that, we implemented the N-body. As said before, The N-body simulation does the time integration of a given initial linear field  across a given array of scale factors implementing a series of Kick-Drift-Kick operations. 
-During the \textit{Kick} operation we estimate the gravitational force experienced by every particles implementing Fast Fourier Transform and update their momentum. In the next state, \textit{Drift}, the particles are displaced and their positions is updated with the velocity estimated in the previous step. This operation is continued until the observed large scale structures at the final time-step.
-To perform the lightcone computation and extract the lens planes,  we export several intermediate state from the N-body simulation. From a given intermediate state we extract a slice and project it as a density plane by painting the particles on a 2D mesh. 
-After creating a grid of coordinates, the lens planes are interpolated onto sky coordinates. 
+\subsection{Ray-Traced Weak Lensing simulated Maps}
+As mentioned above, to perform the lightcone computation and extract the lens planes, we export several intermediate states from the N-body simulation in a redshifts between $z= 0-0.91$. 
+In Table we summarise our light cone configuration, including the center comoving distance and redshift for each snapshot.
+
+To recover the redshift range of the lightcone, the unit box is replicated using periodic boundary conditions. First, we generate rotation matrices along the three axes, hence, each snapshot is rotated around each of the three axes, finally all the particles are randomly shifted along the axes. 
+To obtain the final density field, each snapshot is projected in a 2D plane by estimating its density with a cloud-in-cell scheme. 
+After creating a Cartesian grid of coordinates, each slice is interpolated onto sky coordinates.
  At this point, we have constructed a ray tracer object, to compute the convergence, we directly integrate the lensing density along the unperturbed line of sight. 
 
     
 \subsubsection{Additional validation for our ray-tracing implementation } 
-As an additional test to validate our ray-tracing, instead of running the N-body simulation to generate the snapshots of particles for different scale factors, we create these snapshots by using a linear matter power spectrum at a given fixed redshift $z=0.52$ . \\
+As an additional test to validate our ray-tracing, instead of running the N-body simulation to generate the snapshots of particles for different scale factors, we create these snapshots by using a linear matter power spectrum at a given fixed redshift $z=0.2$ . \\
 Specifically, we estimate the initial LPT displacement given an input linear (real) field.
 
 As we said, the aim of this test is to prove the validity of our ray-tracing. In principle, without the N-body simulations and his possible approximations and systematics, any disagreement between the angular power spectrum computed from the final convergence map
 and the angular power spectrum we use as reference can be attributable to the ray-tracing.
 
-Fig. shows a comparison between the theoretical linear matter power spectrum computed using the Jax-cosmo library at the redshift $0.52$ and the matter power spectrum computed from the resulting snapshots, after applying the painting operations. As we can see the matter power spectrum start to lack in power for $k$(maggiore o circa uguale)1. This is probably due to the paint operation and is something to take into account when we will study the final power spectrum.
+Fig. shows a comparison between the theoretical linear matter power spectrum computed using the Jax-cosmo library\footnote{\url{https://jax-cosmo.readthedocs.io/en/latest/}} at the redshift $0.2$ and the matter power spectrum computed from the resulting snapshots, after applying the painting operations. The results are shown after correcting the paint operation with a compensation function. The matter power spectrum compute from the snapshots are averaged over 50 simulations.  
+\begin{figure*}
+    \centering
+    \includegraphics{paper/figures/pkhalofit_comp.png}
+    \caption{
+    Upper panel: Comparison of the matter power spectrum of FlowPM before and after the PGD correction with reference matter power spectrum \textit{Halofit} at redshift $z = 1.69$. Lower panel: Fractional differences between FlowPM and Halofit.
+    }
+    \label{fig:pklinear_comp}
+\end{figure*}
 
-
-
-From the full projected boxes of the simulations, we exported the lens planes, then interpolated on the light-cones. 
-
-
-The final angular power spectrum is obtained averaging over 1000 samples.
 
 
 \subsubsection{Potential Gradient Descendent (PGD)}    
@@ -194,7 +204,7 @@ In practice we set it up so that it takes the power spectra at all intermediate 
 
 
 
-Figure \ref{fig:pkhalofit_comp} shows the matter power spectrum at $z=1.69$ of our simulations before and after applying the PGD correction compared to analytic Halofit predictions (\denise{cita}(Smith et al. 2003; Takahashi et al. 2012)).
+Figure \ref{fig:pkhalofit_comp} shows the matter power spectrum at $z=1.69$ of our simulations before and after applying the PGD correction compared to analytic Halofit predictions (\cite{smith2003stable}; \cite{takahashi2012revising}).
 \begin{figure}
     \centering
     \includegraphics[width=\columnwidth]{paper/figures/pkhalofit_comp.png}
@@ -229,6 +239,32 @@ DLL and Halofit power spectra for 3 source redshifts. The power spectra and rati
     \label{fig:ps_comp}
 \end{figure}
 
+\subsection{Galaxies Redshift distribution}
+In this work, we create mock data sets according to LSST Y1 data requirements.
+\denise{noise}
+
+We perform tomographic study using the redshift distributions modeled by \cite{zhang2021transitioning}, where the underlying redshift distribution is modeled via the parametrized form:
+\begin{equation}\label{photz}
+    \frac{dN}{dz} \propto z^{2} \exp{[-(z/z_0)^{\alpha}]},
+\end{equation}
+and $\alpha=0.94$ and $z_0=0.26$.
+However, we restrict our analysis up to redshift $\sim 1$, which corresponds to consider the first three redshift bins. 
+The redshift distributions for the fiducial source samples is shown in Figure \ref{photoz}. 
+
+Specifically, we mock 11 source planes and for each of them, we produce 1000 independent realizations 
+
+
+The Tab.  shows the redshift used to create the source planes.
+
+
+
+\begin{figure}\label{photoz}
+    \centering
+    \includegraphics[width=\columnwidth]{paper/figures/photoz_dis.png}
+    \caption{
+   Source sample redshift distributions for each tomographic bin. The y-axis shows the normalized \textit{n(z)} distributions such that $\sum n(z)dz=1.0$}
+    \label{fig:l1normktng_compallarc}
+\end{figure}
 
 
 \subsection{Summary statistics}
@@ -371,27 +407,6 @@ where the index \textit{u} runs to the total number of pixels in the \textit{i}-
     \label{fig:l1normktng_compallarc}
 \end{figure}
 
-\subsection{Galaxies redshift distribution}
-Cosmic shear measurement require a large number of images, for such quantities, determining the redshift of the galaxies spectroscopically is not possible, for this reason, photometric redshift (``photo-z'') measurement are computed.
-In this paper we use the Fisher formalism to investigate its impact on cosmological parameter estimation.
-In our analysis, according to \cite{zhang2021transitioning}, the underlying redshift distribution is modelled via the parametrized model
-\begin{equation}\label{photz}
-    \frac{dN}{dz} \propto z^{2} \exp{[-(z/z_0)^{\alpha}]},
-\end{equation}
-
-where we adopt $\alpha=0.94$ and fix $z_0=0.26$.  
-
-The redshift distributions for the fiducial source samples are shown in Figure . 
-\begin{figure}\label{photoz}
-    \centering
-    \includegraphics[width=\columnwidth]{paper/figures/l1normktng_compallarc.png}
-    \caption{
-   Source sample redshift distributions for each tomographic bin. The y-axis shows the normalized \textit{n(z)} distributions such that $\sum n(z)dz=1.0$}
-    \label{fig:l1normktng_compallarc}
-\end{figure}
-
-
-
 
 \section{Systematic effects}
 Many systematic effects can influence the outcome of cosmic shear analysis and bias cosmic shear results. 
@@ -399,7 +414,8 @@ In this work we incorporate a treatment of the galaxy intrinsic alignment and ph
 In the following, we introduce an overview of these systematics and outline how we incorporate in our analysis.
 
 \subsection{Photometric redshift uncertainty}
-
+Cosmic shear measurement require a large number of images, for such quantities, determining the redshift of the galaxies spectroscopically is not possible, for this reason, photometric redshift (``photo-z'') measurement are computed.
+In this paper we use the Fisher formalism to investigate its impact on cosmological parameter estimation.
  We take into account the uncertainty of the redshift distributions by introducing  a shift of the distributions defined by Eq.\ref{photz} according to the nuisance parameters $\Delta_z$:
  \begin{equation}
      n'_i(z)= n_i(z-\Delta_z)
