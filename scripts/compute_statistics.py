@@ -33,17 +33,17 @@ flags.DEFINE_float("sigma8", 0.8159, "Fiducial sigma_8 value")
 flags.DEFINE_float("n_s", 0.9667, "Fiducial n_s value")
 flags.DEFINE_float("h", 0.6774, "Fiducial Hubble constant value")
 flags.DEFINE_float("w0", -1.0, "Fiducial w0 value")
-flags.DEFINE_integer("nc", 32,
+flags.DEFINE_integer("nc", 128,
                      "Number of transverse voxels in the simulation volume")
 flags.DEFINE_integer("field_npix", 1024,
                      "Number of pixels in the lensing field")
-flags.DEFINE_float("box_size", 32.,
+flags.DEFINE_float("box_size", 205.,
                    "Transverse comoving size of the simulation volume")
 flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
-flags.DEFINE_integer("nmaps", 1, "Number maps to generate.")
+flags.DEFINE_integer("nmaps", 10, "Number maps to generate.")
 flags.DEFINE_float(
     "Aia", 0.,
     "The amplitude parameter A describes the strength of the tidal coupling")
