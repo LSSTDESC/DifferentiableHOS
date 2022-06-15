@@ -3,16 +3,16 @@
 #SBATCH --qos=regular
 #SBATCH --constraint=gpu
 #SBATCH --array=0-9
-#SBATCH -t 04:00:00
+#SBATCH -t 06:00:00
 #SBATCH --gpus-per-task=1
 #SBATCH --ntasks-per-node=1
 
 
 module load tensorflow/2.6.0
 
-cd /pscratch/sd/d/dlan/results_paper/jac_peakcounts/
+cd /pscratch/sd/d/dlan/result_paper_IA_0/jac_ps_multiscale/
 
-python /global/homes/d/dlan/DifferentiableHOS/scripts/compute_jacobian.py  --filename=res_maps_$SLURM_ARRAY_TASK_ID --Peak_counts=True
+python /global/homes/d/dlan/DifferentiableHOS/scripts/compute_statistics.py  --filename=res_maps_0_$SLURM_ARRAY_TASK_ID --Power_Spectrum=True --Aia=0.
 
 #--Convergence_map=True
 #--Power_Spectrum=True  

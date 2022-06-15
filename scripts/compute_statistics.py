@@ -43,7 +43,7 @@ flags.DEFINE_float("field_size", 5., "TSize of the lensing field in degrees")
 flags.DEFINE_integer("n_lens", 11, "Number of lensplanes in the lightcone")
 flags.DEFINE_integer("batch_size", 1,
                      "Number of simulations to run in parallel")
-flags.DEFINE_integer("nmaps", 10, "Number maps to generate.")
+flags.DEFINE_integer("nmaps", 500, "Number maps to generate.")
 flags.DEFINE_float(
     "Aia", 0.,
     "The amplitude parameter A describes the strength of the tidal coupling")
@@ -148,7 +148,7 @@ def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
   return  kmap_IA
 
 
-def desc_y1_analysis(kmap,hos=True):
+def desc_y1_analysis(kmap):
   """
   Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
   """
@@ -156,20 +156,13 @@ def desc_y1_analysis(kmap,hos=True):
   pix_scale = FLAGS.field_size / FLAGS.field_npix * 60 
   ngal_per_pix = ngal * pix_scale**2  
   sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix) 
-  sigma_pix = 4. / pix_scale  
   kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
-  if hos:
-      return kmap
-  else:
-      kmap = fourier_smoothing(kmap,sigma=sigma_pix,resolution=FLAGS.field_npix)
-      return kmap
-    
+  return kmap
     
 
 def rebin(a, shape):
   sh = shape, a.shape[0] // shape
   return tf.math.reduce_mean(tf.reshape(a, sh), axis=-1)
-
 
 
 @tf.function
@@ -188,14 +181,13 @@ def compute_jacobian_ps(
     m = compute_kappa(params[0], params[1], params[2], params[3], params[4],
                       params[5],params[6])
     # Adds realism to convergence map
-    kmap = desc_y1_analysis(m, hos=False)
+    kmap = desc_y1_analysis(m)
     # Compute power spectrum
-    ell, power_spectrum = DHOS.statistics.power_spectrum(
-        kmap[0], FLAGS.field_size, FLAGS.field_npix)
+    ell, power_spectrum = DHOS.statistics.power_spectrum_mulscale(
+        kmap, FLAGS.field_size, FLAGS.field_npix)
     # Keep only ell between 300 and 3000
     ell = ell[2:46]
     power_spectrum = power_spectrum[2:46]
-
     # Further reducing the nnumber of points
     ell = rebin(ell, 11)
     ps = rebin(power_spectrum, 11)
@@ -218,8 +210,8 @@ def compute_jacobian_pk(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
         kmap = desc_y1_analysis(kmap)
         # Compute the peak counts
         counts, bins = DHOS.statistics.peaks_histogram_tf_mulscale(
-                 kmap, nscales=5, bins=tf.linspace(-.1, 1., 8))
-        counts = counts[3:]
+                 kmap, nscales=7, bins=tf.linspace(-.1, 1., 8))
+        counts = counts[4:7]
         counts = tf.stack(counts)
     jac = tape.jacobian(counts,
                         params,
@@ -243,9 +235,9 @@ def compute_jacobian_l1norm(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
         kmap = desc_y1_analysis(kmap_IA)
 
         l1norm = DHOS.statistics.l1norm(kmap,
-                                        nscales=5,
+                                        nscales=7,
                                         nbins=8,
-                                        value_range=[-.1, 1.])[3:]
+                                        value_range=[-.1, 1.])[4:7]
      
     jac = tape.jacobian(l1norm,
                         params,
@@ -278,7 +270,6 @@ def main(_):
   if FLAGS.Power_Spectrum:
       t = time.time()
       for i in range(FLAGS.nmaps):
-            
           jac, ps, ell, kmap = compute_jacobian_ps(
               tf.convert_to_tensor(FLAGS.Omega_c, dtype=tf.float32),
               tf.convert_to_tensor(FLAGS.sigma8, dtype=tf.float32),
