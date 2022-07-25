@@ -23,6 +23,7 @@ def _get_wavelet_normalization(image, nscales):
     return [tf.math.sqrt(tf.reduce_sum(c**2)) for c in wt]
 
 
+@tf.function
 def l1norm(image,
            nscales=3,
            value_range=[-1., 1.],
@@ -51,7 +52,7 @@ def l1norm(image,
      """
 
     with tf.name_scope(name):
-        image = tf.convert_to_tensor(image, dtype=tf.float32)
+        image = tf.cast(image, dtype=tf.float32)
 
         # Compute the wavelet normalization factor
         norm_factors = _get_wavelet_normalization(image, nscales)

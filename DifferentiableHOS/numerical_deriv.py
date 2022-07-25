@@ -12,7 +12,7 @@ import numpy as np
 import flowpm
 import flowpm.tfpower as tfpower
 import flowpm.scipy.interpolate as interpolate
-from DifferentiableHOS.pk import power_spectrum 
+from DifferentiableHOS.pk import power_spectrum
 
 nsteps = 2
 nc = 16
@@ -65,9 +65,10 @@ def compute_powerspectrum(Omega_c):
                                    final_state[0])
     final_field = tf.reshape(final_field, [nc, nc, nc])
     k, power_spectrum = power_spectrum(final_field,
-                            boxsize=np.array([box_size, box_size, box_size]),
-                            kmin=0.1,
-                            dk=2 * np.pi / box_size)
+                                       boxsize=np.array(
+                                           [box_size, box_size, box_size]),
+                                       kmin=0.1,
+                                       dk=2 * np.pi / box_size)
     return power_spectrum
 
 
@@ -95,8 +96,8 @@ def Flow_jac(Omega_c):
                                        final_state[0])
         final_field = tf.reshape(final_field, [nc, nc, nc])
         k, power_spectrum = power_spectrum(final_field,
-                                boxsize=np.array(
-                                    [box_size, box_size, box_size]),
-                                kmin=0.1,
-                                dk=2 * np.pi / box_size)
+                                           boxsize=np.array(
+                                               [box_size, box_size, box_size]),
+                                           kmin=0.1,
+                                           dk=2 * np.pi / box_size)
     return tape.jacobian(power_spectrum, params, experimental_use_pfor=False)

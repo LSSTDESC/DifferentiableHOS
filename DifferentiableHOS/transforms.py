@@ -2,7 +2,7 @@
 import tensorflow as tf
 
 
-def starlet2d(image, nscales=4, name="starlet2d",padding="VALID"):
+def starlet2d(image, nscales=4, padding="VALID", name="starlet2d"):
     """ Computes the multiscale 2D starlet transform of an image.
 
   This function only keeps "VALID" regions, i.e. discarding coefficients
