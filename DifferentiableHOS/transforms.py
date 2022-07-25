@@ -2,7 +2,7 @@
 import tensorflow as tf
 
 
-def starlet2d(image, nscales=4, name="starlet2d"):
+def starlet2d(image, nscales=4, name="starlet2d",padding="VALID"):
     """ Computes the multiscale 2D starlet transform of an image.
 
   This function only keeps "VALID" regions, i.e. discarding coefficients
@@ -30,7 +30,7 @@ def starlet2d(image, nscales=4, name="starlet2d"):
         approx = image
 
         for i in range(nscales):
-            c_i = tf.nn.atrous_conv2d(approx, W, 2**i, padding="VALID")
+            c_i = tf.nn.atrous_conv2d(approx, W, 2**i, padding=padding)
             _, h, w, c = c_i.get_shape()
             coeffs.append(tf.image.resize_with_crop_or_pad(approx, h, w) - c_i)
             approx = c_i

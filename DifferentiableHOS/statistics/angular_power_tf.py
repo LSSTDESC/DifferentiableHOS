@@ -135,3 +135,4 @@ def power_spectrum_mulscale(map_data, field, npix, nscales=7, nmin=4, nmax=6):
         results = results + image
     ell, ps = measure_power_spectrum_tf(results, field, npix)
     return ell, ps
+
