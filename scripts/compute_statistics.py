@@ -23,7 +23,7 @@ from flowpm.fourier_smoothing import fourier_smoothing
 from flowpm.neural_ode_nbody import make_neural_ode_fn
 from flowpm.tfbackground import rad_comoving_distance
 
-flags.DEFINE_string("filename", "jac_output_", "Output filename")
+flags.DEFINE_string("filename", "/pscratch/sd/d/dlan/result_paper_IA_0/output_", "Output filename")
 flags.DEFINE_string(
     "correction_params",
     "/global/homes/d/dlan/flowpm/notebooks/camels_25_64_pkloss.params",
@@ -61,7 +61,7 @@ flags.DEFINE_boolean("l1_norm", False,
 FLAGS = flags.FLAGS
 
 
-@tf.function
+#@tf.function
 def compute_kappa(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
     """ Computes a convergence map using ray-tracing through an N-body for a given
     set of cosmological parameters
@@ -160,10 +160,10 @@ def desc_y1_analysis(kmap):
     """
   Adds noise and apply smoothing we might expect in DESC Y1 SRD setting
   """
-    ngal = 10
+    ngal = 20
     pix_scale = FLAGS.field_size / FLAGS.field_npix * 60
     ngal_per_pix = ngal * pix_scale**2
-    sigma_e = 0.26 / np.sqrt(2 * ngal_per_pix)
+    sigma_e = 0.26 / np.sqrt(ngal_per_pix)
     kmap = kmap + sigma_e * tf.random.normal(kmap.shape)
     return kmap
 
@@ -186,7 +186,7 @@ def compute_jacobian_ps(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
         kmap = desc_y1_analysis(m)
         # Compute power spectrum
         ell, power_spectrum = DHOS.statistics.power_spectrum_mulscale(
-            kmap, FLAGS.field_size, FLAGS.field_npix)
+            kmap, FLAGS.field_size, FLAGS.field_npix, nmin=4, nmax=7)
         # Keep only ell between 300 and 3000
         ell = ell[2:46]
         power_spectrum = power_spectrum[2:46]
@@ -252,7 +252,8 @@ def compute_jacobian_l1norm(Omega_c, sigma8, Omega_b, n_s, h, w0, Aia):
     jac = tape.jacobian(l1norm,
                         params,
                         experimental_use_pfor=False,
-                        parallel_iterations=1)
+                        parallel_iterations=1
+                       )
 
     return jac, l1norm, kmap
 
