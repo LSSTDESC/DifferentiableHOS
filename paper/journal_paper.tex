@@ -1,65 +1,81 @@
-\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
-\documentclass[twocolumn,twocolappendix]{aastex63}
 
-% Add your own macros here:
-\pdfoutput=1 %for arXiv submission
-%\usepackage{amsmath,amssymb,amstext}
-\usepackage{amsmath,amstext}
-\usepackage[T1]{fontenc}
-\usepackage{apjfonts}
-\usepackage{ae,aecompl}
-\usepackage[utf8]{inputenc}
-\usepackage[figure,figure*]{hypcap}
-\usepackage{hyperref}
-\usepackage{url}
-\urlstyle{same}
-\usepackage{lineno}
-\linenumbers
-%\modulolinenumbers[2]
+\documentclass{aa}  
 
-\newcommand{\placeholder}[1]{\textit{PLACEHOLDER: #1}}
-
-\newcommand{\jl}[1]{{\color{orange}JL: #1}}
-\newcommand{\EiffL}[1]{{\color{cyan}FL: #1}}
-\newcommand{\denise}[1]{{\color{red}DL: #1}}
-\usepackage{microtype}
 \usepackage{graphicx}
-\usepackage{fontawesome}
-\newcommand{\github}{\href{https://github.com/DifferentiableUniverseInitiative/flowpm/tree/master}{\faGithub}}
-\newcommand{\nblink}[1]{\href{https://github.com/DifferentiableUniverseInitiative/flowpm/tree/nbody_ode/notebooks/#1.ipynb}{\faFileCodeO}}
-% header settings
-\shorttitle{Differentiable Lensing Simulations}
-\shortauthors{Lanzieri et al.\ (LSST~DESC)}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{txfonts}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[colorlinks=true, citecolor=blue, linkcolor=blue, urlcolor=blue]{hyperref}
 
-% ======================================================================
+\begin{document} 
 
-\begin{document}
+
 \title{Forecasting the power of Higher Order Weak Lensing Statistics with automatically differentiable simulations}
-\input{authors}
 
-\begin{abstract}
-We present the Differentiable Lensing Lightcone (DLL), a fully differentiable physical model designed for being used as a forward model in Bayesian inference algorithms requiring access to derivatives of lensing observables with respect to cosmological parameters. 
-We extend the public FlowPM N-body code, a particle-mesh N-body solver, simulating lensing lightcones and implementing the Born approximation in the Tensorflow framework. Furthermore, DLL is aimed at achieving high accuracy with low computational costs. As such, it integrates a novel Hybrid Physical-Neural parameterisation able to compensate for the small-scale approximations resulting from particle-mesh schemes for cosmological N-body simulations.
+
+\author{Denise Lanzieri \inst{1}
+\and
+Fran\c{c}ois Lanusse \inst{2}
+\and
+Chirag Modi \inst{3}
+\and 
+Benjamin Horowitz \inst{4, 5}
+\and
+Joachim Harnois-Déraps \inst{6}
+\and
+Jean-Luc Starck \inst{2}
+\and
+The LSST Dark Energy Science Collaboration (LSST DESC)
+}
+\institute{Université Paris Cité, Université Paris-Saclay, CEA, CNRS, AIM, F-91191, Gif-sur-Yvette, France
+\and
+Université Paris-Saclay, Université Paris Cité, CEA, CNRS, AIM, 91191, Gif-sur-Yvette, France;
+\and
+Center for Computational Astrophysics,
+Center for Computational Mathematics,
+Flatiron Institute, New York, NY 10010, USA;
+\and
+Lawrence Berkeley National Laboratory, 1 Cyclotron Road, Berkeley, 94720, CA, USA;
+\and
+Department of Astrophysical Sciences, Princeton University, Princeton, NJ 08544, USA
+\and
+School of Mathematics, Statistics and Physics, Newcastle University, Herschel Building, NE1 7RU Newcastle-upon-Tyne, UK
+}
+
+
+\date{Received xxxx; accepted xxx}
+
+% \abstract{}{}{}{}{} 
+% 5 {} token are mandatory
+ 
+  \abstract
+  % context heading (optional)
+  % {} leave it empty if necessary  
+   {}
+  % aims heading (mandatory)
+   {We present the Differentiable Lensing Lightcone (DLL), a fully differentiable physical model designed for being used as a forward model in Bayesian inference algorithms requiring access to derivatives of lensing observables with respect to cosmological parameters. 
+}
+  % methods heading (mandatory)
+   {We extend the public FlowPM N-body code, a particle-mesh N-body solver, simulating lensing lightcones and implementing the Born approximation in the Tensorflow framework. Furthermore, DLL is aimed at achieving high accuracy with low computational costs. As such, it integrates a novel Hybrid Physical-Neural parameterisation able to compensate for the small-scale approximations resulting from particle-mesh schemes for cosmological N-body simulations.
 We validate our simulations in an LSST setting against high-resolution $\kappa$TNG simulations by comparing both the lensing angular power spectrum and multiscale peak counts. We demonstrate an ability to recover lensing $C_\ell$ up to a 10\% accuracy at $\ell=1000$ for sources at redshift 1, with as few as $\sim 0.6$ particles per Mpc/h. 
 As a first use case, we use this tool to investigate the relative constraining power of the angular power spectrum and peak counts statistic in an LSST setting.
 Such comparisons are typically very costly as they require a large number of simulations, and do not scale well with the increasing number of cosmological parameters.  
-As opposed to forecasts based on finite differences, these statistics can be analytically differentiated with respect to cosmology, or any systematics included in the simulations at the same computational cost of the forward simulation. We find that the peak counts outperform the power spectrum on the cold dark matter parameter $\Omega_c$, on the amplitude of density fluctuations $\sigma_8$, and on the
-amplitude of the intrinsic alignment signal $A_{IA}$.
-\end{abstract}
+As opposed to forecasts based on finite differences, these statistics can be analytically differentiated with respect to cosmology, or any systematics included in the simulations at the same computational cost of the forward simulation. }
+  % results heading (mandatory)
+   {We find that the peak counts outperform the power spectrum on the cold dark matter parameter $\Omega_c$, on the amplitude of density fluctuations $\sigma_8$, and on the
+amplitude of the intrinsic alignment signal $A_{IA}$.}
+  % conclusions heading (optional), leave it empty if necessary 
+   {}
 
-\keywords{methods: statistical -- dark energy}
+   \keywords{methods: statistical -- dark energy
+               }
 
-%\accepted{}
-%\submitjournal{the Astrophysical Journal Supplement}
-
-
-%\tableofcontents%-----------------------------
-%===========================
-% BEGINNING OF THE MAIN TEXT
-%===========================
+   \maketitle
+%
+%-------------------------------------------------------------------
 
 \section{Introduction}
-Weak gravitational lensing by Large Scale Structures (LSS) is one of the key probes to test cosmological models and gain insight into constituents of the Universe. The upcoming stage-IV surveys, such as the Legacy Survey of Space and Time (LSST) of the Vera C. Rubin Observatory \citep{ivezic2019lsst}, the Nancy Grace Roman Space Telescope \citep{spergel2015wide}, and  the Euclid Mission \citep{laureijs2011euclid}, will provide measurements of billions of galaxy shapes with unprecedented accuracy, which in turn will lead to tight constraints on dark energy models \citep[e.g.][]{mandelbaum2018lsst}.
+Weak gravitational lensing by Large Scale Structures (LSS) is one of the key probes to test cosmological models and gain insight into constituents of the Universe. The upcoming stage-IV surveys, such as the Legacy Survey of Space and Time (LSST) of the Vera C. Rubin Observatory \cite{ivezic2019lsst}, the Nancy Grace Roman Space Telescope \citep{spergel2015wide}, and  the Euclid Mission \citep{laureijs2011euclid}, will provide measurements of billions of galaxy shapes with unprecedented accuracy, which in turn will lead to tight constraints on dark energy models \citep[e.g.][]{mandelbaum2018lsst}.
 
 With the increased statistical power of these surveys comes the question of their optimal analysis. Traditional cosmological analysis rely on measurements of the two-point statistics, either the shear two-point correlation functions or its Fourier transform, the lensing power spectrum. However, the two-point statistics are only optimal for Gaussian fields, and do not fully capture the non-Gaussian information imprinted in the lensing signal at the scales that future surveys will be able to access (e.g. information encoded in the peaks and in the filamentary features of the matter distribution).
 
@@ -87,9 +103,11 @@ We validate our simulations against the cosmological N-body simulations $\kappa$
 
 In particular, as a first application, we show how the differentiability of numerical simulations can be exploited to evaluate the Fisher Matrix. Then, we compare the constraining power of two map-based weak lensing statistics: the lensing power spectrum and peak counts and investigate the degeneracy in high dimensional cosmological and nuisance parameter space through Fisher forecasts. 
 
-This paper is structured as follows: in \autoref{weak_lesning_modeling} we briefly review the weak lensing modeling including the theoretical framework and the summary statistics used in this work. In \autoref{Fast_and_Differentiable_Lensing_Simulations} we introduce the numerical simulations illustrating the numerical methods used to generate mock WL maps. In \autoref{Validating_simulations_for_LSST_Y} we validate the simulations by comparing the statistics from our simulations and $\kappa$TNG-Dark ones.
+This paper is structured as follows: in \ref{weak_lesning_modeling} we briefly review the weak lensing modeling including the theoretical framework and the summary statistics used in this work. In \autoref{Fast_and_Differentiable_Lensing_Simulations} we introduce the numerical simulations illustrating the numerical methods used to generate mock WL maps. In \autoref{Validating_simulations_for_LSST_Y} we validate the simulations by comparing the statistics from our simulations and $\kappa$TNG-Dark ones.
 The Fisher forecast formalism and the survey and noise setting are shown in \autoref{Application_Fisher_forecast_for_HOS}. We finally discuss our results and present our conclusions afterward, in \autoref{Discussion} and \autoref{Conclusions}.
 
+
+%--------------------------------------------------------------------
 
 \section{Weak Lensing Modeling}\label{weak_lesning_modeling}
 \subsection{{Cosmic shear}}
@@ -441,7 +459,7 @@ spectra and ratios are means over 100 independent map realisations. The shaded r
     \label{fig:pkhalofit_comp}
 \end{figure}
  We observe a bias between our measured power spectrum and the theoretical prediction at low $k$. This reduced power is explained by the small box size of our simulation and the associated reduced number of large-scale modes.  At redshift $z=0.91$ most of the missing
-power is recovered by the HPN correction up to $k \sim 1$, after which the method overemphasizes the small-scale power. In this article however, we can assume that this effect does not impact the results of the cosmological parameters forecast, since it concerns scales that are beyond the range of frequencies that are taken into account for the analysis.
+power is recovered by the HPN correction up to $k\sim 1$, after which the method overemphasizes the small-scale power. In this article however, we can assume that this effect does not impact the results of the cosmological parameters forecast, since it concerns scales that are beyond the range of frequencies that are taken into account for the analysis.
 
 At redshift $z=0.03$, the correction model does not improve significantly the results.
 
@@ -697,8 +715,7 @@ with the starlet peak counts and use a wavelet-filtered lensing power spectrum a
 
 To conclude, the framework outlined here can provide many advantages in the context of cosmological parameter inference:  it is the first step in the development of fully differentiable inference pipelines for weak lensing, it is a fast tool to further explore the sensitivity of higher-order statistics to systematics. 
 
-
-\section*{Acknowledgments}
+\begin{acknowledgements}
 
 DESC acknowledges ongoing support from the IN2P3 (France), the STFC 
 (United Kingdom), and the DOE, NSF, and LSST Corporation (United States).  
@@ -715,13 +732,22 @@ BH is supported by the AI Accelerator program of the Schmidt Futures Foundation;
 This paper has undergone internal review in the LSST Dark Energy Science Collaboration. We thank the internal reviewers, Virginia Ajani, William Coulton, and Jia Liu for their constructive comments.
 Author contributions to this work are as follows: Denise Lanzieri led the analysis and the writing of the paper.  Jean-Luc Starck provided his expertise on wavelet peak counting and higher-order weak lensing statistics. All the authors provided feedback on
 the text.
-%=====================
-% END OF THE MAIN TEXT
-%=====================
+\end{acknowledgements}
 
-%%%%%%%%%%%%%%%%%%%%%  APPENDIX %%%%%%%%%%%%%%%%%%
-\appendix
-
+% WARNING
+%-------------------------------------------------------------------
+% Please note that we have included the references to the file aa.dem in
+% order to compile it, but we ask you to:
+%
+% - use BibTeX with the regular commands:
+%   \bibliographystyle{aa} % style aa.bst
+%   \bibliography{Yourfile} % your references Yourfile.bib
+%
+% - join the .bib files when you upload your source files
+%-------------------------------------------------------------------
+\bibliographystyle{aa} % style aa.bst
+\bibliography{paper/biblio} 
+\begin{appendix}
 
 \section{Validation against a theory prediction}
 We show the $2\sigma$ constraints obtained from our Fisher analysis of standard $C_{\ell}$ (orange) and the theoretical prediction from halofit (blue contours) in \autoref{fig:Fisher_result_theory}. The dashed black contours define the prior used for the forecasting.
@@ -819,11 +845,5 @@ As for the full analysis, we tested the stability of the Fisher forecast by vary
      \label{fig:Fisher_result_ia}
 \end{figure*}
 
-
-
-%%%%%%%%%%%%%%%%%%%% REFERENCES %%%%%%%%%%%%%%%%%%
-
-\bibliography{biblio.bib}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{appendix}
 \end{document}
