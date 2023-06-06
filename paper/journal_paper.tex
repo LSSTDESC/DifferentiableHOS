@@ -13,7 +13,7 @@
 \title{Forecasting the power of Higher Order Weak Lensing Statistics with automatically differentiable simulations}
 
 
-\author{Denise Lanzieri \inst{1}
+\author{Denise Lanzieri \inst{1}\fnmsep\thanks{ Contact: denise.lanzieri@cea.fr}
 \and
 Fran\c{c}ois Lanusse \inst{2}
 \and
@@ -29,13 +29,13 @@ The LSST Dark Energy Science Collaboration (LSST DESC)
 }
 \institute{Université Paris Cité, Université Paris-Saclay, CEA, CNRS, AIM, F-91191, Gif-sur-Yvette, France
 \and
-Université Paris-Saclay, Université Paris Cité, CEA, CNRS, AIM, 91191, Gif-sur-Yvette, France;
+Université Paris-Saclay, Université Paris Cité, CEA, CNRS, AIM, 91191, Gif-sur-Yvette, France
 \and
 Center for Computational Astrophysics,
 Center for Computational Mathematics,
-Flatiron Institute, New York, NY 10010, USA;
+Flatiron Institute, New York, NY 10010, USA
 \and
-Lawrence Berkeley National Laboratory, 1 Cyclotron Road, Berkeley, 94720, CA, USA;
+Lawrence Berkeley National Laboratory, 1 Cyclotron Road, Berkeley, 94720, CA, USA
 \and
 Department of Astrophysical Sciences, Princeton University, Princeton, NJ 08544, USA
 \and
@@ -67,10 +67,9 @@ amplitude of the intrinsic alignment signal $A_{IA}$.}
   % conclusions heading (optional), leave it empty if necessary 
    {}
 
-   \keywords{methods: statistical -- dark energy
-               }
+\keywords{methods: statistical -- cosmology: large-scale structure of Universe --gravitational lensing:weak}
 
-   \maketitle
+\maketitle
 %
 %-------------------------------------------------------------------
 
@@ -111,7 +110,7 @@ The Fisher forecast formalism and the survey and noise setting are shown in \aut
 
 \section{Weak Lensing Modeling}\label{weak_lesning_modeling}
 \subsection{{Cosmic shear}}
-Weak gravitational lensing is a powerful probe to infer the projected matter density distribution between an observer and a source.
+Weak gravitational lensing is a powerful probe to infer the distribution of matter density between an observer and a source.
 The effect of gravitational lensing 
 can be quantified in term of the separation vector \textbf{x} between two light rays separated by an angle $\boldsymbol{\theta}$:
 \begin{align}\label{sep}
@@ -730,8 +729,10 @@ Contract DE-AC02-76SF00515.
 This work was granted access to the HPC/AI resources of IDRIS under the allocation 2022-AD011013922 made by GENCI.
 BH is supported by the AI Accelerator program of the Schmidt Futures Foundation; JHD acknowledges support from an STFC Ernest Rutherford Fellowship (project reference ST/S004858/1); The presented work used computing resources provided by DESC at the National Energy Research Scientific Computing Center, a DOE Office of Science User Facility supported by the Office of Science of the U.S. Department of Energy under Contract No. DEAC02-05CH11231; 
 This paper has undergone internal review in the LSST Dark Energy Science Collaboration. We thank the internal reviewers, Virginia Ajani, William Coulton, and Jia Liu for their constructive comments.
-Author contributions to this work are as follows: Denise Lanzieri led the analysis and the writing of the paper.  Jean-Luc Starck provided his expertise on wavelet peak counting and higher-order weak lensing statistics. All the authors provided feedback on
-the text.
+Author contributions to this work are as follows: Denise Lanzieri led the analysis and the writing of the paper. Fran\c{c}ois Lanusse designed the project, contributed to code and text development.
+Chirag Modi contributed to the PM code and text development.
+Benjamin Horowitz contributed to the text and made minor code developments. Joachim Harnois-Déraps contributed to the intrinsic alignment modeling, provided general advice on simulations, and contributed to the text.
+Jean-Luc Starck provided expertise on wavelet peak counting and higher-order weak lensing statistics. 
 \end{acknowledgements}
 
 % WARNING

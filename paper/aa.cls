@@ -1121,9 +1121,9 @@
                  exceeds the pagewidth, please supply a shorter form
                  with \string\authorrunning\space and/or
                  \string\titlerunning\space prior to \string\maketitle}
-               {Use \string\titlerunning\space to supply a shorter
-                 title and/or \string\authorrunning\space to supply a
-                 shorter list of authors.}%
+               % {Use \string\titlerunning\space to supply a shorter
+               %   title and/or \string\authorrunning\space to supply a
+               %   shorter list of authors.}%
     \typeout{IMPORTANT
     ^^J}
   \fi
