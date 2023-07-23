@@ -57,7 +57,7 @@ School of Mathematics, Statistics and Physics, Newcastle University, Herschel Bu
 }
   % methods heading (mandatory)
    {We extend the public FlowPM N-body code, a particle-mesh N-body solver, simulating lensing lightcones and implementing the Born approximation in the Tensorflow framework. Furthermore, DLL is aimed at achieving high accuracy with low computational costs. As such, it integrates a novel Hybrid Physical-Neural parameterisation able to compensate for the small-scale approximations resulting from particle-mesh schemes for cosmological N-body simulations.
-We validate our simulations in an LSST setting against high-resolution $\kappa$TNG simulations by comparing both the lensing angular power spectrum and multiscale peak counts. We demonstrate an ability to recover lensing $C_\ell$ up to a 10\% accuracy at $\ell=1000$ for sources at redshift 1, with as few as $\sim 0.6$ particles per Mpc/h. 
+We validate our simulations in an LSST setting against high-resolution \textbf{$\kappa$TNG-Dark} simulations by comparing both the lensing angular power spectrum and multiscale peak counts. We demonstrate an ability to recover lensing $C_\ell$ up to a 10\% accuracy at $\ell=1000$ for sources at redshift 1, with as few as $\sim 0.6$ particles per Mpc/h. 
 As a first use case, we use this tool to investigate the relative constraining power of the angular power spectrum and peak counts statistic in an LSST setting.
 Such comparisons are typically very costly as they require a large number of simulations, and do not scale well with the increasing number of cosmological parameters.  
 As opposed to forecasts based on finite differences, these statistics can be analytically differentiated with respect to cosmology, or any systematics included in the simulations at the same computational cost of the forward simulation. }
@@ -98,7 +98,7 @@ All of these new techniques for cosmological analyses make the development of fa
 
 \cite{bohm2021madlens} developed MADLens, a CPU-based python package for producing non-Gaussian lensing convergence maps. These maps are differentiable with respect to the initial conditions of the underlying numerical simulations and to the cosmological parameters $\Omega_m$ and $\sigma_8$. In this paper,  we aim to efficiently compute gradients that benefit the development of new inference algorithms for weak lensing surveys. To do this we extend the framework of the FlowPM package \cite{modi2021flowpm} by implementing the Born approximation and simulating lensing lightcones in the Tensorflow framework. TensorFlow is a tensor library that includes the ability to perform automatic differentiation. Automatic differentiation enables us to compute gradients exactly as opposed to finite differences, which only provide approximate gradients. Specifically, TensorFlow implements the backpropagation algorithm to compute gradients, i.e. first it creates a graph (e.g. data structures representing units of computation), then it works backward through the graph by applying the chain rule at each node. Unlike MADlens, our tool is GPU-based and provides derivatives with respect to all the cosmological parameters. There are also differences in the implementation of various functions to improve accuracy and speed.
 
-We validate our simulations against the cosmological N-body simulations $\kappa$TNG \citep{osato2021kappatng} by comparing both the lensing angular power spectrum and multiscale peak counts.
+We validate our simulations against the cosmological N-body simulations \textbf{$\kappa$TNG-Dark} \citep{osato2021kappatng} by comparing both the lensing angular power spectrum and multiscale peak counts.
 
 In particular, as a first application, we show how the differentiability of numerical simulations can be exploited to evaluate the Fisher Matrix. Then, we compare the constraining power of two map-based weak lensing statistics: the lensing power spectrum and peak counts and investigate the degeneracy in high dimensional cosmological and nuisance parameter space through Fisher forecasts. 
 
@@ -291,6 +291,25 @@ Analytical models with which to predict the observed signals do not exist for mo
 To circumvent this issue, one approach is to rely on generating a suite of numerical simulations.
 In the following section, we introduce our weak lensing map simulation procedure, including a description of the N-body simulator and the lightcone construction.
 
+\begin{table}
+	\centering
+	\caption{Approximate execution times of different parts of the simulations. The values represent the mean and the standard deviation of 7 runs, 1 loop each.}
+	\begin{tabular}{lc} 
+		\hline 
+		Model  & Time  \\
+             \hline
+		LPT & 744 ms  $\pm 10.7$ ms  \\ 
+		N-Body (128$^3$) & 16.5 s $\pm 7.89$ ms   \\ 
+		N-Body ODE (128$^3$) & 13 s $\pm 120$ ms    \\ 
+    N-Body ODE+HPN (128$^3$) & 1 min 24 s $\pm$ 573 ms    \\ 
+		N-Body (256$^3$) & 1 min 14 s $\pm$ 14.1 ms  \\
+		N-Body ODE (256$^3$) & 1 min 39 s $\pm$ 181 ms   \\
+		Raytracing (Born Approximation) & 320 ms $\pm$ 16.9 ms    \\
+		\hline
+	\end{tabular}
+	\label{tab:computational_cost}
+\end{table}
+
 \subsection{Differentiable Particle-Mesh N-body simulations}
 \subsubsection{FastPM/FlowPM}
 
@@ -424,7 +443,7 @@ where $b_w$ is the smoothing bandwidth parameter, \textit{X} is the number of pe
 This procedure yields a peak count statistic that is smoothly differentiable with respect to the input map and thus can be used for applications such as Fisher forecasting as discussed later in this paper.
 
 \section{Validating simulations for LSST}\label{Validating_simulations_for_LSST_Y}
-In this section, we compare the results from our simulation to other works, including the analytic models for the matter power spectrum \textit{Halofit} \citep{smith2003stable,takahashi2012revising} and the cosmological N-body simulations, $\kappa$TNG \citep{osato2021kappatng}.
+In this section, we compare the results from our simulation to other works, including the analytic models for the matter power spectrum \textit{Halofit} \citep{smith2003stable,takahashi2012revising} and the cosmological N-body simulations, \textbf{$\kappa$TNG-Dark} \citep{osato2021kappatng}.
 
 
 The $\kappa$TNG simulations is a suite of publicly available weak lensing mock maps based on the cosmological hydrodynamical simulations IllustrisTNG, generated with the moving mesh code AREPO \citep{2010MNRAS.401..791S}.
@@ -438,7 +457,7 @@ For a complete description of the implementation see \cite{osato2021kappatng}.
 To produce our simulations, we follow the evolution of $128^3$ dark matter particles in a periodic box of comoving volume equal to $205^3$ ($h^{-1}$ Mpc)$^3$, with initial conditions generated at z=6 using the linear matter power spectrum as implemented by \cite{eisenstein1998baryonic}. In particular, we implement the  Eisenstein-Hu transfer function in the Tensorflow framework, in order to compute its gradients automatically.
 
 We assume the following cosmological parameters: $h=0.6774$, $n_s =0.9667$, $M_{\nu} = 0.0$ eV, $w=-1$, $\Omega_k = 0.$, $\Omega_m=0.3075$, $\sigma_8= 0.8159$, such that they match the results of Planck 2015 \citep{ade2016planck}.
-We reproduce the same configuration of $\kappa$TNG, i.e. each map is on a regular grid of $1024^2$ pixels and $5\times 5$ deg$^2$.
+We reproduce the same configuration of \textbf{$\kappa$TNG-Dark}, i.e. each map is on a regular grid of $1024^2$ pixels and $5\times 5$ deg$^2$.
 
 
 The actual choice of bins to include in the forecasting is made following the DESC data requirement for the angular power spectra \citep{mandelbaum2018lsst}, i.e. adopting $\ell_{max,shear} = 3000$ and  $\ell_{min,shear} = 300$. 
@@ -478,14 +497,14 @@ In \autoref{fig:comp_kmap} we show an example of our convergence map at $ z= 0.9
     \includegraphics[width=0.95\columnwidth]{paper/figures/cls_DLL_vs_ktng_hpn.pdf}
         \includegraphics[width=\columnwidth]{paper/figures/res_cls_DLL_vs_ktng_hpn.pdf}
     \caption{
-    \textbf{Upper panel}: Angular power spectra of PM simulations before and after using the Hybrid Physical-Neural (HPN) correction model compared to the $\kappa$TNG prediction. \textbf{Lower panel}: fractional angular power spectrum of PM simulations before and after using the Hybrid Physical-Neural (HPN) correction model and the $\kappa$TNG prediction. The power spectra and ratios are means over 100 independent map realisations and the shaded regions represent the standard deviation from 100 DLL realisations. The spectra are computed for the source redshift $z_s=0.91$. 
+    \textbf{Upper panel}: Angular power spectra of PM simulations before and after using the Hybrid Physical-Neural (HPN) correction model compared to the \textbf{$\kappa$TNG-Dark} prediction. \textbf{Lower panel}: fractional angular power spectrum of PM simulations before and after using the Hybrid Physical-Neural (HPN) correction model and the \textbf{$\kappa$TNG-Dark} prediction. The power spectra and ratios are means over 100 independent map realisations and the shaded regions represent the standard deviation from 100 DLL realisations. The spectra are computed for the source redshift $z_s=0.91$. 
 }
     \label{fig:ps_comp}
 \end{figure}
 
-In the upper panel of \autoref{fig:ps_comp}, we present the angular power spectrum computed from our Differentiable Lensing Lightcone (DLL hereafter) complemented by the HPN scheme and a conventional DLL simulation with the same resolution. Both the outputs are compared to the $\kappa$TNG prediction. In the lower panel  of \autoref{fig:ps_comp} the fractional differences between the convergence power spectra from the two maps and the $\kappa$TNG are shown.  Both the power spectra and ratios are averaged over $N = 100$ realisations. 
+In the upper panel of \autoref{fig:ps_comp}, we present the angular power spectrum computed from our Differentiable Lensing Lightcone (DLL hereafter) complemented by the HPN scheme and a conventional DLL simulation with the same resolution. Both the outputs are compared to the \textbf{$\kappa$TNG-Dark} prediction. In the lower panel  of \autoref{fig:ps_comp} the fractional differences between the convergence power spectra from the two maps and the \textbf{$\kappa$TNG-Dark} are shown.  Both the power spectra and ratios are averaged over $N = 100$ realisations. 
 We can see that the HPN  model reduces the relative deviations of the angular power spectra to within 30\%. 
-We also observe a perfect match at large scales, since the $\kappa$TNG and the DLL simulations have the same box size of 205 Mpc/h$^3$.
+We also observe a perfect match at large scales, since the \textbf{$\kappa$TNG-Dark} and the DLL simulations have the same box size of 205 Mpc/h$^3$.
 
 
 
@@ -507,23 +526,23 @@ The signal is computed for the source redshift $z_s=0.91$ and is averaged over 1
 \end{figure}
 
 \subsection{Lensing $C_\ell$}
-To quantify the accuracy of the simulations we aim to reproduce the summary statistics from the Dark Matter Only $\kappa$TNG simulations. 
-We compare the results from the angular power spectrum for different source redshift, just investigating how well we can recover the power spectrum for a given source plane. The results of the angular power spectrum from the sources redshift z=[0.25,0.46,0.65,0.91,1.30] are shown in the upper panel of \autoref{fig:clsktng_comp}, as well as the fractional differences between the $\kappa$TNG and DLL maps in the lower panel.
+To quantify the accuracy of the simulations we aim to reproduce the summary statistics from the Dark Matter Only \textbf{$\kappa$TNG-Dark} simulations. 
+We compare the results from the angular power spectrum for different source redshift, just investigating how well we can recover the power spectrum for a given source plane. The results of the angular power spectrum from the sources redshift z=[0.25,0.46,0.65,0.91,1.30] are shown in the upper panel of \autoref{fig:clsktng_comp}, as well as the fractional differences between the \textbf{$\kappa$TNG-Dark} and DLL maps in the lower panel.
 \begin{figure}
     \centering
     \includegraphics[width=0.95\columnwidth]{paper/figures/cls_DLL_vs_ktng.pdf}
     \includegraphics[width=\columnwidth]{paper/figures/res_cls_DLL_vs_ktng.pdf}
     \caption{
     \textbf{Upper panel}: Angular power spectra for 5 source redshift from
-our DLL maps compared to the $\kappa$TNG predictions.
- \textbf{Lower panel:} Fractional angular power spectra of DLL simulations and $\kappa$TNG simulations for different source redshift.
+our DLL maps compared to the \textbf{$\kappa$TNG-Dark} predictions.
+ \textbf{Lower panel:} Fractional angular power spectra of DLL simulations and \textbf{$\kappa$TNG-Dark} simulations for different source redshift.
   The power spectra mean over 100 independent map realisations and the shaded regions represent the standard deviation from 100 independent DLL realisations.}
      \label{fig:clsktng_comp}
 \end{figure}
-We observe that the differences for $z_s=0.91$ and  $z_s=1.30$ curves are within $10\%$ of accuracy for scales larger than $\ell=1000$, within $25\%$  for scales $1000<\ell<2000$ and  within $25\%$ and $45\%$ for scales $2000<\ell<3000$. For lower source redshifts the deficit of power in our simulations becomes worse. This can be explained considering that a given value of $\ell$ at lower redshift corresponds to smaller scales, some of those below the resolution of our simulations. We conclude that, if for z=0.91 and z=1.30 we have a general agreement with $\kappa$TNG, with this specific setting of the model, we can not model correctly cases with sources redshift lower than z=0.91.
+We observe that the differences for $z_s=0.91$ and  $z_s=1.30$ curves are within $10\%$ of accuracy for scales larger than $\ell=1000$, within $25\%$  for scales $1000<\ell<2000$ and  within $25\%$ and $45\%$ for scales $2000<\ell<3000$. For lower source redshifts the deficit of power in our simulations becomes worse. This can be explained considering that a given value of $\ell$ at lower redshift corresponds to smaller scales, some of those below the resolution of our simulations. We conclude that, if for z=0.91 and z=1.30 we have a general agreement with \textbf{$\kappa$TNG-Dark}, with this specific setting of the model, we can not model correctly cases with sources redshift lower than z=0.91.
 
 
- We want to highlight that the results shown are produced keeping the resolution of the simulations extremely low, and we do not aspect to get the same precision as $\kappa$TNG. The purpose of these tests, and the overall goal of the paper, is to present a proof of concept of the DLL package and its potential.  In practice, we will not work at this resolution. 
+ We want to highlight that the results shown are produced keeping the resolution of the simulations extremely low, and we do not \textbf{expect} to get the same precision as \textbf{$\kappa$TNG-Dark}. The purpose of these tests, and the overall goal of the paper, is to present a proof of concept of the DLL package and its potential.  In practice, we will not work at this resolution. 
 
 Nevertheless, note that the simulations presented here already achieve a similar resolution of the MassiveNus simulations \citep{liu2018massivenus}, despite being generated using one single GPU. 
 
@@ -532,17 +551,17 @@ Nevertheless, note that the simulations presented here already achieve a similar
 We compute the starlet peak counts as wavelet coefficients with values higher than their eight neighbors. 
 We define $J_{max}=7$ in \autoref{wav_des}, this starlet filter applied to our map with a pixel size of 0.29 arcmin, corresponds to a decomposition in 7 maps of resolution [0.59, 1.17, 2.34, 4.68, 9.33, 18.79, 37.38] arcmin and a coarse map. To satisfy the survey requirement and keep the analysis centred in the range $\ell=[300, 3000]$, we consider only the scales corresponding to [9.33, 18.79, 37.38] arcmin. The peaks are counted for 8 linearly spaced bins within the range $(\kappa*\mathcal{W})=[-0.1, 1.]$. 
 
-As for the power spectrum, we compare the peak counts statistic from our map to the one from the $\kappa$TNG for different redshift bins. We present the results in \autoref{peaks_z}. These results are shown in terms of S/N, where the signal to noise is defined as the ratio between the amplitude of wavelet coefficients over the noise expected for our survey choice.
+As \textbf{with} the power spectrum, we compare the peak counts statistic from our map to the one from the \textbf{$\kappa$TNG-Dark} for different redshift bins. We present the results in \autoref{peaks_z}. These results are shown in terms of S/N, where the signal to noise is defined as the ratio between the amplitude of wavelet coefficients over the noise expected for our survey choice.
 At wavelet scale $\theta=9.33$ arcmin the differences for the $z_s=0.91$ curves are within the $20\%$ up to $S/N=3$, for $S/N>3$ the accuracy is between the $20\%$ and the $50\%$. At larger scale, $\theta=18.79$ arcmin the accuracy is within the $20\%$. Finally, at $\theta=37.38$ arcmin the accuracy is within the $15\%$, except $S/N<1$ where the accuracy decreases up to $28\%$.
 The results slightly improve for z=1.30, showing an accuracy within the $35\%$ for scale $\theta=9.33$ arcmin,  within the $10\%$ for $\theta=18.79$ arcmin and $25\%$ for $\theta=37.38$ arcmin.
  As for the power spectrum case, we observe higher discrepancies at lower redshift, hence we can conclude that, with the current setting of our simulation, we can not model correctly such redshift.
 
-\begin{figure}\label{peaks_z}
+\begin{figure}
     \centering
     \includegraphics[width=\columnwidth]{paper/figures/res_peak_DLL_vs_ktng.pdf}
-    \caption{Fractional number of peaks of DLL simulations and $\kappa$TNG simulations for different sources redshift. The peak counts distributions are shown for each starlet scales resolutions used: 9.34 (upper panel), 18.17 (center panel), 37.38 arcmins (lower panel).
+    \caption{Fractional number of peaks of DLL simulations and \textbf{$\kappa$TNG-Dark} simulations for different sources redshift. The peak counts distributions are shown for each starlet scales resolutions used: 9.34 (upper panel), 18.17 (center panel), 37.38 arcmins (lower panel).
   The results mean over 100 independent map realisations and the shaded regions represent the standard deviation from 100 independent DLL realisations.}
-\end{figure}
+\end{figure}\label{peaks_z}
 
 
 \section{Application: Fisher forecast
@@ -563,10 +582,10 @@ The Fisher matrix is defined as the expectation value of the Hessian matrix of t
 \end{equation}
 where we indicate with $\theta$ the cosmological parameters or any systematics included in the simulation.
 If we assume a Gaussian likelihood and a Covariance matrix $C_{ij}$ independent from $\theta$, we can calculate the Fisher matrix as
-\begin{equation}\label{Fisher_matrix}
+\begin{equation}
       F_{\alpha \beta}= \sum_{ij}\frac{\partial \mu}{\partial \theta_{\alpha}} C_{ij}^{-1}
       \frac{\partial \mu}{\partial \theta_{\beta}}
-\end{equation}
+\end{equation}\label{Fisher_matrix}
 were we indicate as $ \frac{\partial \mu}{\partial \theta_{\alpha}} $ the derivatives of the summary statistics w.r.t the cosmological or nuisance parameters evaluated at the fiducial values. So, under the assumption of Gaussian likelihood, the Fisher information matrix provides a lower bound on the expected errors on cosmological parameters. 
 
 \subsection{Analysis choices} \label{Analysis_choices}
@@ -588,14 +607,14 @@ In addition, we adopt the estimator introduced by \cite{hartlap2007your} to take
 \end{equation}
 where $C_{*}$ is the covariance matrix defined in \autoref{covariance_matrix}. 
 As mentioned before, we want to focus on a fair comparison between the power spectrum and the peak counts method. To be sure we are considering the same scales for both statistics, we apply a wavelet pass-band filter to the maps to isolate particular scales before measuring the power spectrum.  We use the same scales used for the Peak counts, i.e. we decompose the noisy convergence map in seven images, we sum back only the three maps corresponding to [9.33, 18.79, 37.38] arcmin and compute the angular $C_{\ell}$ on the resulting image.
-An example of the $C_{\ell}$ computed for each individual starlet scale image and for the summed image is depicted in \autoref{window}.
+An example of the $C_{\ell}$ computed for each individual starlet scale image and for the summed image is depicted in \autoref{fig:window}.
 
 
 For each map, we compute the angular power spectrum and the peak counts by using our own differentiable code implemented in the TensorFlow framework. \footnote{
 Code publicly available at: \\ \href{https://github.com/LSSTDESC/DifferentiableHOS/tree/main/DifferentiableHOS/statistics}{https://github.com/LSSTDESC/DifferentiableHOS/statistics}  }
-\begin{figure}\label{window}
+\begin{figure}
     \centering
-    \includegraphics[width=0.95\columnwidth]{paper/figures/window.pdf}
+    \includegraphics[width=\columnwidth]{paper/figures/window.pdf}
     \caption{Example of the filtered $C_{\ell}$ used for the analysis. The colored lines show the $C_{\ell}$ computed on maps with a different resolution of the starlet decomposition. Specifically: the blue line (multiscale map) corresponds to $C_{\ell}$ computed on the summed image, the black dashed line (Original map) corresponds to the standard $C_{\ell}$ computed from a non-filtered map. }
      \label{fig:window}
 \end{figure}
@@ -696,7 +715,7 @@ A further example is provided by \cite{zeghal2022neural}, which demonstrates tha
 \section{Conclusions}\label{Conclusions}
 In this paper, we have presented the Differentiable Lensing Lightcone (DLL) model, a fast lensing lightcone simulator providing access to the gradient. 
 We extended the public FlowPM N-body code, implementing the Born approximation in the Tensorflow framework to create non-Gaussian convergence maps of weak gravitational lensing. To allow DLL to run at low resolution without affecting significantly the accuracy, we complement the FlowPM N-body code with the Hybrid-Physical Neural scheme, a new correction scheme for quasi N-body PM solver, based on Neural Network implemented as a Fourier-space filter. 
-We validate our tool by comparing the $C_{\ell}$ and peak counts statistics against predictions from $\kappa$TNG simulations. 
+We validate our tool by comparing the $C_{\ell}$ and peak counts statistics against predictions from \textbf{$\kappa$TNG-Dark} simulations. 
 To do this, we run simulations following the evolution of $128^3$ particles and we produce weak lensing convergence maps for several redshift sources. 
 We show that, despite being generated at low computation costs, we recover a good match for redshift equal or higher than $z=0.91$. 
 To demonstrate the potential of our tool, as a first use case, we exploit the automatic differentiability of the simulations to do Fisher forecast. 
@@ -792,8 +811,8 @@ In \autoref{fig:Fisher_stab} we present the results for Fisher constraints obtai
 
 \section{Validation with higher resolutions simulations}
 In \autoref{Validating_simulations_for_LSST_Y}, we presented a validation of our simulations by comparing the statistics from DLL and $\kappa$TNG-Dark.
-In particular, we have seen a discrepancy on small scales for both the $C_{\ell}$ and the peak counts. We have attributed this bias to the low resolution of the simulations. Therefore, to justify this assumption, we simulate convergence maps of higher resolution, i.e, we raise the number of particles but keep the same box of 205$^3$($h^{-1}$Mpc$)^3$ in the simulation. In the left panel of  \autoref{fig:ps_comp_high}, we present the angular power spectrum computed from our DLL with the original number count of particles ($128^3$) and the power spectrum computed from higher resolutions DLL simulations ($212^3$). The two outputs are compared to the $\kappa$TNG predictions. In the right panel  of \autoref{fig:ps_comp_high} the fractional differences between the convergence power spectra from the two maps and the $\kappa$TNG are shown. We can see that, by increasing the number of particles, we can improve the accuracy of the lensing $C_{\ell}$ up to $~20\%$.
-In \autoref{peaks_high}, we compare the peak counts statistic from our map to the one from the $\kappa$TNG for different resolutions. We use the same wavelet decomposition presented in \autoref{peak_sec}. As for the power spectrum, we note the same tendency to recover better accuracy when the resolution is increased. 
+In particular, we have seen a discrepancy on small scales for both the $C_{\ell}$ and the peak counts. We have attributed this bias to the low resolution of the simulations. Therefore, to justify this assumption, we simulate convergence maps of higher resolution, i.e, we raise the number of particles but keep the same box of 205$^3$($h^{-1}$Mpc$)^3$ in the simulation. In the left panel of  \autoref{fig:ps_comp_high}, we present the angular power spectrum computed from our DLL with the original number count of particles ($128^3$) and the power spectrum computed from higher resolutions DLL simulations ($212^3$). The two outputs are compared to the \textbf{$\kappa$TNG-Dark} predictions. In the right panel  of \autoref{fig:ps_comp_high} the fractional differences between the convergence power spectra from the two maps and the \textbf{$\kappa$TNG-Dark} are shown. We can see that, by increasing the number of particles, we can improve the accuracy of the lensing $C_{\ell}$ up to $~20\%$.
+In \autoref{peaks_high}, we compare the peak counts statistic from our map to the one from the \textbf{$\kappa$TNG-Dark} for different resolutions. We use the same wavelet decomposition presented in \autoref{peak_sec}. As for the power spectrum, we note the same tendency to recover better accuracy when the resolution is increased. 
 
 Finally, we reproduce the results of the Fisher analysis for the intrinsic alignment parameter $A_{IA}$ with higher-resolution simulations. We adopt the same Forecast criteria presented in \autoref{Application_Fisher_forecast_for_HOS}. However, for this specific test, we compute the derivatives numerically using the finite differences. The step sizes used for these variations are $\Delta x_{IA}=0.15$ for the $C_{\ell}$ and $\Delta x_{IA}=1.2$ for the peak counts. 
 % These step sizes have been tested by comparing the Fisher results obtained from those to the ones obtained from different step sizes. 
@@ -809,9 +828,9 @@ As for the full analysis, we tested the stability of the Fisher forecast by vary
 \begin{figure*}
     \centering
     \includegraphics[width=\columnwidth]{paper/figures/cls_DLL_vs_ktng_high.pdf}
-        \includegraphics[width=\columnwidth]{paper/figures/res_cls_DLL_vs_ktng_high.pdf}
+        \includegraphics[width=0.90\columnwidth]{paper/figures/res_cls_DLL_vs_ktng_high.pdf}
     \caption{
-    \textbf{Left panel}: Angular power spectra of PM simulations with original resolution (number count 128$^3$, blue line) and higher resolution (number count 212$^3$, red line) compared to the $\kappa$TNG prediction. \textbf{Right panel}: fractional angular power spectrum of PM simulations with original and higher resolution and the $\kappa$TNG prediction. The power spectra and ratios are means over 100 independent map realisations and the shaded regions represent the error on the mean. The spectra are computed for the source redshift $z_s=0.91$. 
+    \textbf{Left panel}: Angular power spectra of PM simulations with original resolution (number count 128$^3$, blue line) and higher resolution (number count 212$^3$, red line) compared to the \textbf{$\kappa$TNG-Dark} prediction. \textbf{Right panel}: fractional angular power spectrum of PM simulations with original and higher resolution and the \textbf{$\kappa$TNG-Dark} prediction. The power spectra and ratios are means over 100 independent map realisations and the shaded regions represent the error on the mean. The spectra are computed for the source redshift $z_s=0.91$. 
 }
     \label{fig:ps_comp_high}
 \end{figure*}
@@ -821,7 +840,7 @@ As for the full analysis, we tested the stability of the Fisher forecast by vary
 \begin{figure*}\label{peaks_high}
     \centering
     \includegraphics[width=\columnwidth]{paper/figures/res_peak_DLL_vs_ktng_high.pdf}
-    \caption{Fractional number of peaks of DLL simulations and $\kappa$TNG simulations. The results are shown for the number counts $128^3$ (blue lines) and $212^3$ (orange lines). The peak counts distributions are shown for each starlet scales resolutions used: 9.34 (upper panel), 18.17 (center panel), 37.38 arcmins (lower panel).
+    \caption{Fractional number of peaks of DLL simulations and \textbf{$\kappa$TNG-Dark} simulations. The results are shown for the number counts $128^3$ (blue lines) and $212^3$ (orange lines). The peak counts distributions are shown for each starlet scales resolutions used: 9.34 (upper panel), 18.17 (center panel), 37.38 arcmins (lower panel).
   The results mean over 100 independent map realisations, the shaded regions represent the error on the mean. The statistics are computed for the source redshift $z_s=0.91$. }
 \end{figure*}
 
